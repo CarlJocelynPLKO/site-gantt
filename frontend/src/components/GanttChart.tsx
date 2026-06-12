@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import Gantt from "frappe-gantt";
 import type { ViewMode } from "frappe-gantt";
 import type { GanttTask } from "../types/gantt";
-import "frappe-gantt/dist/frappe-gantt.css";
+import "../../node_modules/frappe-gantt/dist/frappe-gantt.css";
 
 interface GanttChartProps {
   tasks: GanttTask[];
