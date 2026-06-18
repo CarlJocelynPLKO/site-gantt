@@ -138,7 +138,7 @@ function App() {
             </ul>
           )}
 
-          <GanttChart tasks={tasks} viewMode={viewMode} chartRef={chartRef} />
+              <GanttChart tasks={tasks} viewMode={viewMode} />
         </section>
       )}
     </main>
