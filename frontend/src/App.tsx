@@ -5,12 +5,14 @@ import { FileUpload } from "./components/FileUpload";
 import { GanttChart } from "./components/GanttChart";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import { ZoomControls } from "./components/ZoomControls";
+import { ManualProjectForm } from "./components/ManualProjectForm"; // NOUVEL IMPORT
 import { analyzeFile, generateGantt } from "./hooks/useGanttApi";
 import type { AnalyzeResponse, ColumnSelection, GanttTask } from "./types/gantt";
 import { exportChartAsPng, exportChartAsSvg } from "./utils/exportChart";
 import "./App.css";
 
-type AppStep = "upload" | "analyzing" | "mapping" | "gantt";
+// NOUVELLE ÉTAPE "manual" AJOUTÉE ICI
+type AppStep = "upload" | "analyzing" | "mapping" | "gantt" | "manual";
 
 function App() {
   const [step, setStep] = useState<AppStep>("upload");
@@ -58,6 +60,13 @@ function App() {
     }
   };
 
+  // NOUVELLE FONCTION : Que faire quand le formulaire manuel est validé ?
+  const handleManualCreate = (newTask: GanttTask) => {
+    setTasks([newTask]); // On remplace la liste actuelle par cette unique tâche
+    setWarnings([]); 
+    setStep("gantt"); // On passe directement au graphique !
+  };
+
   const handleReset = () => {
     setStep("upload");
     setSelectedFile(null);
@@ -67,26 +76,17 @@ function App() {
     setError(null);
   };
 
+  // ... (Code d'export inchangé)
   const handleExportPng = async () => {
-    if (!chartRef.current) {
-      return;
-    }
-    try {
-      await exportChartAsPng(chartRef.current);
-    } catch {
-      setError("Export PNG impossible.");
-    }
+    if (!chartRef.current) return;
+    try { await exportChartAsPng(chartRef.current); } 
+    catch { setError("Export PNG impossible."); }
   };
 
   const handleExportSvg = () => {
-    if (!chartRef.current) {
-      return;
-    }
-    try {
-      exportChartAsSvg(chartRef.current);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Export SVG impossible.");
-    }
+    if (!chartRef.current) return;
+    try { exportChartAsSvg(chartRef.current); } 
+    catch (err) { setError(err instanceof Error ? err.message : "Export SVG impossible."); }
   };
 
   return (
@@ -98,15 +98,41 @@ function App() {
         </div>
         {step !== "upload" && (
           <button type="button" className="btn btn-ghost" onClick={handleReset}>
-            Nouveau fichier
+            Nouveau projet
           </button>
         )}
       </header>
 
       {error && <p className="error-banner">{error}</p>}
 
-      {step === "upload" && <FileUpload onFileSelected={handleFileSelected} />}
+      {/* L'ACCUEIL A CHANGÉ : On propose maintenant deux choix */}
+      {step === "upload" && (
+        <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ marginBottom: '30px' }}>
+            <button 
+              type="button" 
+              className="btn btn-primary" 
+              style={{ fontSize: '1.1rem', padding: '12px 24px' }}
+              onClick={() => setStep("manual")}
+            >
+              + Créer un projet manuellement
+            </button>
+            <p style={{ margin: '15px 0', color: '#64748b' }}>OU</p>
+          </div>
+          <FileUpload onFileSelected={handleFileSelected} />
+        </div>
+      )}
+
+      {/* AFFICHAGE DU NOUVEAU FORMULAIRE */}
+      {step === "manual" && (
+        <ManualProjectForm 
+          onProjectCreated={handleManualCreate} 
+          onCancel={handleReset} 
+        />
+      )}
+
       {step === "analyzing" && <LoadingSkeleton />}
+      
       {step === "mapping" && analysis && (
         <ColumnMappingPanel
           mapping={analysis.mapping}
@@ -138,7 +164,7 @@ function App() {
             </ul>
           )}
 
-              <GanttChart tasks={tasks} viewMode={viewMode} />
+          <GanttChart tasks={tasks} viewMode={viewMode} />
         </section>
       )}
     </main>
