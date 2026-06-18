@@ -4,10 +4,11 @@ import type { ViewMode } from "frappe-gantt";
 import type { GanttTask } from "../types/gantt";
 import "../../node_modules/frappe-gantt/dist/frappe-gantt.css";
 
+// 1. L'interface (les ingrédients fournis par le parent)
 interface GanttChartProps {
   tasks: GanttTask[];
   viewMode: ViewMode;
-  chartRef: React.RefObject<HTMLDivElement | null>;
+  // J'ai retiré chartRef d'ici, ce n'est pas un ingrédient externe !
 }
 
 function formatDate(value: string): string {
@@ -21,7 +22,10 @@ function durationDays(start: string, end: string): number {
   return Math.max(1, Math.round(diff / (1000 * 60 * 60 * 24)));
 }
 
-export function GanttChart({ tasks, viewMode, chartRef }: GanttChartProps) {
+// 2. Le composant principal
+export function GanttChart({ tasks, viewMode }: GanttChartProps) {
+  // 3. C'est ICI qu'on crée nos références internes !
+  const chartRef = useRef<HTMLDivElement>(null);
   const ganttInstance = useRef<Gantt | null>(null);
 
   useEffect(() => {
@@ -54,7 +58,7 @@ export function GanttChart({ tasks, viewMode, chartRef }: GanttChartProps) {
       }
       ganttInstance.current = null;
     };
-  }, [tasks, chartRef]);
+  }, [tasks]); // J'ai aussi enlevé chartRef des dépendances ici, car un useRef ne change jamais
 
   useEffect(() => {
     ganttInstance.current?.change_view_mode(viewMode);
