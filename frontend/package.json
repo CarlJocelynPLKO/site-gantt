@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
     "axios": "^1.7.9",
     "frappe-gantt": "^1.0.3",
     "html2canvas": "^1.4.1",
