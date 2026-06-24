@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { ViewMode } from "frappe-gantt";
 import type { Ref } from "react";
 import type { GanttTask } from "../types/gantt";
+import { getTaskDateRange, suggestViewModeForRange } from "../utils/ganttFitView";
 import { GanttChart } from "./GanttChart";
 import { ProjectTitle } from "./ProjectTitle";
 import { ZoomControls } from "./ZoomControls";
@@ -9,6 +10,7 @@ import { ZoomControls } from "./ZoomControls";
 interface GanttPanelProps {
   panelRef?: Ref<HTMLElement>;
   projectName?: string;
+  projectGroupName?: string;
   onRenameProject?: (name: string) => Promise<void>;
   saving?: boolean;
   tasks: GanttTask[];
@@ -25,6 +27,7 @@ interface GanttPanelProps {
 export function GanttPanel({
   panelRef,
   projectName,
+  projectGroupName,
   onRenameProject,
   saving = false,
   tasks,
@@ -38,6 +41,8 @@ export function GanttPanel({
   showManualEntry = true,
 }: GanttPanelProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fitTrigger, setFitTrigger] = useState(0);
+  const [columnWidth, setColumnWidth] = useState<number | undefined>(undefined);
 
   const exitFullscreen = useCallback(() => {
     setIsFullscreen(false);
@@ -51,6 +56,18 @@ export function GanttPanel({
       return next;
     });
   }, []);
+
+  const handleFitView = useCallback(() => {
+    const range = getTaskDateRange(tasks);
+    if (!range) {
+      return;
+    }
+
+    const suggestedMode = suggestViewModeForRange(range.start, range.end);
+    onViewModeChange(suggestedMode);
+    setColumnWidth(undefined);
+    setFitTrigger((value) => value + 1);
+  }, [tasks, onViewModeChange]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -77,11 +94,16 @@ export function GanttPanel({
         projectName && <h2 className="gantt-title">{projectName}</h2>
       )}
 
+      {projectGroupName && <p className="project-team-label">Équipe : {projectGroupName}</p>}
+
       {tasks.length > 0 ? (
         <>
           <div className="gantt-toolbar">
             <ZoomControls viewMode={viewMode} onChange={onViewModeChange} />
             <div className="export-actions">
+              <button type="button" className="btn btn-secondary" onClick={handleFitView}>
+                Ajuster la vue
+              </button>
               <button type="button" className="btn btn-secondary" onClick={toggleFullscreen}>
                 {isFullscreen ? "Quitter le plein écran" : "Plein écran"}
               </button>
@@ -102,7 +124,13 @@ export function GanttPanel({
             </ul>
           )}
 
-          <GanttChart tasks={tasks} viewMode={viewMode} isFullscreen={isFullscreen} />
+          <GanttChart
+            tasks={tasks}
+            viewMode={viewMode}
+            isFullscreen={isFullscreen}
+            fitTrigger={fitTrigger}
+            columnWidth={columnWidth}
+          />
         </>
       ) : (
         <div className="gantt-empty">

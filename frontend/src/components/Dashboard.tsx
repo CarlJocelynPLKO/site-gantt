@@ -1,26 +1,31 @@
 import { FormEvent, useState, type MouseEvent } from "react";
-import type { Project } from "../types/app";
+import type { Project, TeamGroup } from "../types/app";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 
 interface DashboardProps {
   projects: Project[];
+  groups: TeamGroup[];
   saving?: boolean;
-  onCreateProject: (name: string) => Promise<void>;
+  onCreateProject: (name: string, groupId: string | null) => Promise<void>;
   onOpenProject: (projectId: string) => void;
   onDeleteProject: (projectId: string) => Promise<void>;
   onImport: () => void;
+  onManageGroups: () => void;
 }
 
 export function Dashboard({
   projects,
+  groups,
   saving = false,
   onCreateProject,
   onOpenProject,
   onDeleteProject,
   onImport,
+  onManageGroups,
 }: DashboardProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [projectName, setProjectName] = useState("");
+  const [groupId, setGroupId] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; projectId: string } | null>(null);
 
@@ -34,8 +39,9 @@ export function Dashboard({
     }
 
     try {
-      await onCreateProject(projectName.trim());
+      await onCreateProject(projectName.trim(), groupId || null);
       setProjectName("");
+      setGroupId("");
       setShowCreateForm(false);
     } catch {
       // L'erreur est affichée par App via la bannière.
@@ -63,9 +69,16 @@ export function Dashboard({
       ]
     : [];
 
+  const groupName = (id: string | null) => groups.find((group) => group.id === id)?.name;
+
   return (
     <section className="mapping-panel dashboard">
-      <h2>Mes projets</h2>
+      <div className="dashboard-top-actions">
+        <h2>Mes projets</h2>
+        <button type="button" className="btn btn-secondary" onClick={onManageGroups}>
+          Gérer les équipes
+        </button>
+      </div>
 
       {projects.length === 0 ? (
         <p className="muted">Vous n&apos;avez pas encore créé de projet.</p>
@@ -81,7 +94,12 @@ export function Dashboard({
                   onClick={() => onOpenProject(project.id)}
                   onContextMenu={(event) => openProjectMenu(event, project.id)}
                 >
-                  {project.name}
+                  <span>
+                    {project.name}
+                    {project.groupId && (
+                      <span className="project-team-badge">{groupName(project.groupId)}</span>
+                    )}
+                  </span>
                   <span className="project-meta">
                     {project.tasks.length} tâche{project.tasks.length > 1 ? "s" : ""}
                   </span>
@@ -107,6 +125,18 @@ export function Dashboard({
             />
           </label>
 
+          <label>
+            Équipe assignée (optionnel)
+            <select value={groupId} onChange={(event) => setGroupId(event.target.value)}>
+              <option value="">Aucune équipe</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
           {formError && <p className="form-error">{formError}</p>}
 
           <div className="create-project-actions">
@@ -119,6 +149,7 @@ export function Dashboard({
               onClick={() => {
                 setShowCreateForm(false);
                 setProjectName("");
+                setGroupId("");
                 setFormError(null);
               }}
             >

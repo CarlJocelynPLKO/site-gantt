@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ColumnMappingSuggestion, ColumnSelection } from "../types/gantt";
+import type { TeamGroup } from "../types/team";
 
 interface ColumnMappingPanelProps {
   mapping: ColumnMappingSuggestion;
@@ -9,6 +10,9 @@ interface ColumnMappingPanelProps {
   newProjectName?: string;
   onNewProjectNameChange?: (name: string) => void;
   showNewProjectName?: boolean;
+  groups?: TeamGroup[];
+  newProjectGroupId?: string;
+  onNewProjectGroupIdChange?: (groupId: string) => void;
 }
 
 export function ColumnMappingPanel({
@@ -19,6 +23,9 @@ export function ColumnMappingPanel({
   newProjectName = "",
   onNewProjectNameChange,
   showNewProjectName = false,
+  groups = [],
+  newProjectGroupId = "",
+  onNewProjectGroupIdChange,
 }: ColumnMappingPanelProps) {
   const [taskColumn, setTaskColumn] = useState("");
   const [startColumn, setStartColumn] = useState("");
@@ -50,15 +57,33 @@ export function ColumnMappingPanel({
       </div>
 
       {showNewProjectName && onNewProjectNameChange && (
-        <label className="import-project-name-field">
-          Nom du nouveau projet
-          <input
-            type="text"
-            value={newProjectName}
-            onChange={(event) => onNewProjectNameChange(event.target.value)}
-            placeholder="Ex. Planning chantier"
-          />
-        </label>
+        <>
+          <label className="import-project-name-field">
+            Nom du nouveau projet
+            <input
+              type="text"
+              value={newProjectName}
+              onChange={(event) => onNewProjectNameChange(event.target.value)}
+              placeholder="Ex. Planning chantier"
+            />
+          </label>
+          {onNewProjectGroupIdChange && (
+            <label className="import-project-name-field">
+              Équipe assignée (optionnel)
+              <select
+                value={newProjectGroupId}
+                onChange={(event) => onNewProjectGroupIdChange(event.target.value)}
+              >
+                <option value="">Aucune équipe</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </>
       )}
 
       <div className="mapping-grid">

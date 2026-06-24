@@ -557,6 +557,141 @@ body.gantt-fullscreen-active {
   margin-bottom: 0.5rem;
 }
 
+.gantt-scale-wrapper {
+  transform-origin: top left;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.user-email {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.auth-panel .auth-form,
+.auth-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 420px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.auth-form input {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+}
+
+.auth-toggle {
+  margin-top: 1rem;
+}
+
+.dashboard-top-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-top-actions h2 {
+  margin: 0;
+}
+
+.project-team-badge {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: #0f766e;
+  font-weight: 500;
+}
+
+.project-team-label {
+  margin: -0.5rem 0 1rem;
+  color: #64748b;
+}
+
+.groups-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.groups-header h2 {
+  margin: 0;
+}
+
+.group-cards {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.group-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+.group-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.people-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.assignees-fieldset {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin: 0;
+  grid-column: 1 / -1;
+}
+
+.assignees-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.assignee-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
 @media (max-width: 640px) {
   .app-shell {
     padding: 1rem 0.75rem 2rem;

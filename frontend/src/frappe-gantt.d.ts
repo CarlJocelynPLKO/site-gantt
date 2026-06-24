@@ -18,6 +18,7 @@ declare module "frappe-gantt" {
         view_mode?: ViewMode;
         bar_height?: number;
         padding?: number;
+        column_width?: number;
         custom_popup_html?: (task: GanttTask) => string;
       },
     );

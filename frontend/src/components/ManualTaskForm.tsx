@@ -1,15 +1,62 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import type { GanttTask } from "../types/gantt";
+import type { Person } from "../types/team";
 
 interface ManualTaskFormProps {
-  onAddTask: (task: { name: string; start: string; end: string }) => Promise<void>;
+  people: Person[];
+  editingTask?: GanttTask | null;
+  onAddTask: (task: {
+    name: string;
+    start: string;
+    end: string;
+    assigneeIds: string[];
+  }) => Promise<void>;
+  onUpdateTask?: (
+    taskId: string,
+    task: { name: string; start: string; end: string; assigneeIds: string[] },
+  ) => Promise<void>;
+  onCancelEdit?: () => void;
   saving?: boolean;
 }
 
-export function ManualTaskForm({ onAddTask, saving = false }: ManualTaskFormProps) {
+export function ManualTaskForm({
+  people,
+  editingTask = null,
+  onAddTask,
+  onUpdateTask,
+  onCancelEdit,
+  saving = false,
+}: ManualTaskFormProps) {
   const [name, setName] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const isEditing = Boolean(editingTask);
+
+  useEffect(() => {
+    if (editingTask) {
+      setName(editingTask.name);
+      setStart(editingTask.start);
+      setEnd(editingTask.end);
+      setAssigneeIds(editingTask.assignees?.map((person) => person.id) ?? []);
+    } else {
+      setName("");
+      setStart("");
+      setEnd("");
+      setAssigneeIds([]);
+    }
+    setError(null);
+  }, [editingTask]);
+
+  const toggleAssignee = (personId: string) => {
+    setAssigneeIds((current) =>
+      current.includes(personId)
+        ? current.filter((id) => id !== personId)
+        : [...current, personId],
+    );
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -30,11 +77,24 @@ export function ManualTaskForm({ onAddTask, saving = false }: ManualTaskFormProp
       return;
     }
 
+    const payload = {
+      name: name.trim(),
+      start,
+      end,
+      assigneeIds,
+    };
+
     try {
-      await onAddTask({ name: name.trim(), start, end });
-      setName("");
-      setStart("");
-      setEnd("");
+      if (isEditing && editingTask && onUpdateTask) {
+        await onUpdateTask(editingTask.id, payload);
+        onCancelEdit?.();
+      } else {
+        await onAddTask(payload);
+        setName("");
+        setStart("");
+        setEnd("");
+        setAssigneeIds([]);
+      }
     } catch {
       // L'erreur est affichée par App via la bannière.
     }
@@ -42,7 +102,7 @@ export function ManualTaskForm({ onAddTask, saving = false }: ManualTaskFormProp
 
   return (
     <section className="mapping-panel task-form-panel">
-      <h2>Ajouter une tâche</h2>
+      <h2>{isEditing ? "Modifier la tâche" : "Ajouter une tâche"}</h2>
       <form className="task-form" onSubmit={handleSubmit}>
         <label>
           Nom de la tâche
@@ -64,11 +124,44 @@ export function ManualTaskForm({ onAddTask, saving = false }: ManualTaskFormProp
           <input type="date" value={end} onChange={(event) => setEnd(event.target.value)} />
         </label>
 
+        {people.length > 0 && (
+          <fieldset className="assignees-fieldset">
+            <legend>Personnes affectées</legend>
+            <div className="assignees-list">
+              {people.map((person) => (
+                <label key={person.id} className="assignee-option">
+                  <input
+                    type="checkbox"
+                    checked={assigneeIds.includes(person.id)}
+                    onChange={() => toggleAssignee(person.id)}
+                  />
+                  {person.firstName} — {person.jobTitle}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
+
+        {people.length === 0 && (
+          <p className="muted">Assignez une équipe au projet pour affecter des personnes.</p>
+        )}
+
         {error && <p className="form-error">{error}</p>}
 
-        <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? "Enregistrement…" : "Ajouter la tâche"}
-        </button>
+        <div className="create-project-actions">
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {saving
+              ? "Enregistrement…"
+              : isEditing
+                ? "Enregistrer les modifications"
+                : "Ajouter la tâche"}
+          </button>
+          {isEditing && onCancelEdit && (
+            <button type="button" className="btn btn-ghost" onClick={onCancelEdit}>
+              Annuler
+            </button>
+          )}
+        </div>
       </form>
     </section>
   );

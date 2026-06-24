@@ -1,14 +1,19 @@
 import { useRef, useState } from "react";
 import type { ViewMode } from "frappe-gantt";
+import type { GanttTask } from "./types/gantt";
 import { AppHeader } from "./components/AppHeader";
+import { AuthPanel } from "./components/AuthPanel";
 import { ColumnMappingPanel } from "./components/ColumnMappingPanel";
 import { Dashboard } from "./components/Dashboard";
 import { FileUpload } from "./components/FileUpload";
 import { GanttPanel } from "./components/GanttPanel";
+import { GroupsManager } from "./components/GroupsManager";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import { ManualTaskForm } from "./components/ManualTaskForm";
 import { TaskList } from "./components/TaskList";
+import { useAuth } from "./hooks/useAuth";
 import { analyzeFile, generateGantt } from "./hooks/useGanttApi";
+import { useGroups } from "./hooks/useGroups";
 import { useProjects } from "./hooks/useProjects";
 import type { AppStep } from "./types/app";
 import type { AnalyzeResponse, ColumnSelection } from "./types/gantt";
@@ -16,25 +21,42 @@ import { exportChartAsPng, exportChartAsSvg } from "./utils/exportChart";
 import { fileNameToProjectName } from "./utils/fileNameToProjectName";
 
 export function AppWithProjects() {
+  const { user, loading: authLoading, signIn, signUp, signOut, isAuthenticated } = useAuth();
+
   const {
     projects,
-    loading,
+    loading: projectsLoading,
     saving,
     error: projectsError,
     createProject,
     renameProject,
     deleteProject,
     addTaskToProject,
+    updateTaskInProject,
     appendTasksToProject,
     deleteTaskFromProject,
     getProjectById,
-  } = useProjects();
+  } = useProjects(isAuthenticated);
+
+  const {
+    groups,
+    loading: groupsLoading,
+    saving: groupsSaving,
+    error: groupsError,
+    createTeamGroup,
+    removeGroup,
+    addPerson,
+    removePerson,
+    getGroupById,
+  } = useGroups(isAuthenticated);
 
   const [step, setStep] = useState<AppStep>("dashboard");
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<GanttTask | null>(null);
   const [importTargetProjectId, setImportTargetProjectId] = useState<string | null>(null);
   const [importAsNewProject, setImportAsNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectGroupId, setNewProjectGroupId] = useState("");
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
@@ -46,7 +68,14 @@ export function AppWithProjects() {
 
   const activeProject = activeProjectId ? getProjectById(activeProjectId) : undefined;
   const projectTasks = activeProject?.tasks ?? [];
-  const displayError = error ?? projectsError;
+  const projectPeople = activeProject?.groupId
+    ? (getGroupById(activeProject.groupId)?.people ?? [])
+    : [];
+  const projectGroupName = activeProject?.groupId
+    ? getGroupById(activeProject.groupId)?.name
+    : undefined;
+
+  const displayError = error ?? projectsError ?? groupsError;
 
   const resetImportState = () => {
     setSelectedFile(null);
@@ -54,18 +83,20 @@ export function AppWithProjects() {
     setImportTargetProjectId(null);
     setImportAsNewProject(false);
     setNewProjectName("");
+    setNewProjectGroupId("");
   };
 
   const goToDashboard = () => {
     setStep("dashboard");
     setActiveProjectId(null);
+    setEditingTask(null);
     resetImportState();
     setError(null);
   };
 
-  const handleCreateProject = async (name: string) => {
+  const handleCreateProject = async (name: string, groupId: string | null) => {
     try {
-      const project = await createProject(name);
+      const project = await createProject(name, groupId);
       setActiveProjectId(project.id);
       setStep("project");
       setError(null);
@@ -76,6 +107,7 @@ export function AppWithProjects() {
 
   const handleOpenProject = (projectId: string) => {
     setActiveProjectId(projectId);
+    setEditingTask(null);
     setStep("project");
     setError(null);
     resetImportState();
@@ -97,26 +129,33 @@ export function AppWithProjects() {
     if (!activeProjectId) {
       return;
     }
-
     try {
       await deleteTaskFromProject(activeProjectId, taskId);
+      if (editingTask?.id === taskId) {
+        setEditingTask(null);
+      }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de supprimer la tâche.");
     }
   };
 
-  const handleAddManualTask = async (taskInput: { name: string; start: string; end: string }) => {
+  const handleAddManualTask = async (taskInput: {
+    name: string;
+    start: string;
+    end: string;
+    assigneeIds: string[];
+  }) => {
     if (!activeProjectId) {
       return;
     }
-
     try {
       await addTaskToProject(activeProjectId, {
         name: taskInput.name,
         start: taskInput.start,
         end: taskInput.end,
         progress: 0,
+        assigneeIds: taskInput.assigneeIds,
       });
       setError(null);
     } catch (err) {
@@ -124,11 +163,32 @@ export function AppWithProjects() {
     }
   };
 
+  const handleUpdateTask = async (
+    taskId: string,
+    taskInput: { name: string; start: string; end: string; assigneeIds: string[] },
+  ) => {
+    if (!activeProjectId) {
+      return;
+    }
+    try {
+      await updateTaskInProject(activeProjectId, taskId, {
+        name: taskInput.name,
+        start: taskInput.start,
+        end: taskInput.end,
+        progress: 0,
+        assigneeIds: taskInput.assigneeIds,
+      });
+      setEditingTask(null);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de modifier la tâche.");
+    }
+  };
+
   const handleRenameProject = async (name: string) => {
     if (!activeProjectId) {
       return;
     }
-
     try {
       await renameProject(activeProjectId, name);
       setError(null);
@@ -141,6 +201,7 @@ export function AppWithProjects() {
     setImportTargetProjectId(targetProjectId);
     setImportAsNewProject(targetProjectId === null);
     setNewProjectName("");
+    setNewProjectGroupId("");
     setStep("upload");
     setError(null);
   };
@@ -161,11 +222,7 @@ export function AppWithProjects() {
       setStep("mapping");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible d'analyser le fichier.");
-      if (importTargetProjectId) {
-        setStep("project");
-      } else {
-        setStep("upload");
-      }
+      setStep(importTargetProjectId ? "project" : "upload");
     }
   };
 
@@ -188,7 +245,7 @@ export function AppWithProjects() {
       } else if (importAsNewProject) {
         const projectName =
           newProjectName.trim() || fileNameToProjectName(selectedFile.name);
-        const project = await createProject(projectName);
+        const project = await createProject(projectName, newProjectGroupId || null);
         await appendTasksToProject(project.id, result.tasks);
         setActiveProjectId(project.id);
         setStep("project");
@@ -205,7 +262,6 @@ export function AppWithProjects() {
     if (!ganttPanelRef.current) {
       return;
     }
-
     try {
       await exportChartAsPng(ganttPanelRef.current);
     } catch {
@@ -217,7 +273,6 @@ export function AppWithProjects() {
     if (!ganttPanelRef.current) {
       return;
     }
-
     try {
       exportChartAsSvg(ganttPanelRef.current);
     } catch (err) {
@@ -225,24 +280,64 @@ export function AppWithProjects() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <main className="app-shell">
+        <LoadingSkeleton />
+      </main>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main className="app-shell">
+        <AppHeader showBack={false} onBack={() => undefined} />
+        <AuthPanel onSignIn={signIn} onSignUp={signUp} />
+      </main>
+    );
+  }
+
   const showBackButton = step !== "dashboard";
 
   return (
     <main className="app-shell">
-      <AppHeader showBack={showBackButton} onBack={goToDashboard} />
+      <AppHeader
+        showBack={showBackButton}
+        onBack={goToDashboard}
+        userEmail={user?.email}
+        onSignOut={() => void signOut().then(goToDashboard)}
+      />
 
       {displayError && <p className="error-banner">{displayError}</p>}
 
-      {step === "dashboard" && loading && <LoadingSkeleton />}
+      {step === "dashboard" && (projectsLoading || groupsLoading) && <LoadingSkeleton />}
 
-      {step === "dashboard" && !loading && (
+      {step === "dashboard" && !projectsLoading && !groupsLoading && (
         <Dashboard
           projects={projects}
+          groups={groups}
           saving={saving}
           onCreateProject={handleCreateProject}
           onOpenProject={handleOpenProject}
           onDeleteProject={handleDeleteProject}
           onImport={() => startImport(null)}
+          onManageGroups={() => setStep("groups")}
+        />
+      )}
+
+      {step === "groups" && (
+        <GroupsManager
+          groups={groups}
+          saving={groupsSaving}
+          onCreateGroup={async (name) => {
+            await createTeamGroup(name);
+          }}
+          onAddPerson={async (groupId, firstName, jobTitle) => {
+            await addPerson(groupId, firstName, jobTitle);
+          }}
+          onDeleteGroup={removeGroup}
+          onDeletePerson={removePerson}
+          onBack={() => setStep("dashboard")}
         />
       )}
 
@@ -250,11 +345,23 @@ export function AppWithProjects() {
 
       {step === "project" && activeProject && (
         <>
-          <ManualTaskForm onAddTask={handleAddManualTask} saving={saving} />
-          <TaskList tasks={projectTasks} onDeleteTask={handleDeleteTask} />
+          <ManualTaskForm
+            people={projectPeople}
+            editingTask={editingTask}
+            onAddTask={handleAddManualTask}
+            onUpdateTask={handleUpdateTask}
+            onCancelEdit={() => setEditingTask(null)}
+            saving={saving}
+          />
+          <TaskList
+            tasks={projectTasks}
+            onDeleteTask={handleDeleteTask}
+            onEditTask={setEditingTask}
+          />
           <GanttPanel
             panelRef={ganttPanelRef}
             projectName={activeProject.name}
+            projectGroupName={projectGroupName}
             onRenameProject={handleRenameProject}
             saving={saving}
             tasks={projectTasks}
@@ -280,6 +387,9 @@ export function AppWithProjects() {
           showNewProjectName={importAsNewProject}
           newProjectName={newProjectName}
           onNewProjectNameChange={setNewProjectName}
+          groups={groups}
+          newProjectGroupId={newProjectGroupId}
+          onNewProjectGroupIdChange={setNewProjectGroupId}
         />
       )}
     </main>

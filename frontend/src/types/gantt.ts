@@ -20,6 +20,7 @@ export interface GanttTask {
   start: string;
   end: string;
   progress: number;
+  assignees?: { id: string; firstName: string; jobTitle: string }[];
 }
 
 export interface GenerateResponse {
