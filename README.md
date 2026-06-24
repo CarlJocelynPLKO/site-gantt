@@ -35,9 +35,29 @@ npm run dev
 
 Ouvrir [http://localhost:5173](http://localhost:5173).
 
+### Déploiement Vercel
+
+Le fichier `frontend/.env` n'est **pas** envoyé sur Git (`.gitignore`). Sur Vercel, configurez les variables dans le dashboard :
+
+1. **Vercel** → votre projet → **Settings** → **Environment Variables**
+2. Ajoutez :
+   - `VITE_SUPABASE_URL` = `https://votre-projet.supabase.co` (sans `/rest/v1/`)
+   - `VITE_SUPABASE_ANON_KEY` = clé anon ou publishable (Supabase → Project Settings → API)
+3. Cochez **Production**, enregistrez
+4. **Deployments** → **Redeploy** (les variables `VITE_*` sont intégrées au moment du build)
+
+Voir `frontend/.env.example` pour le modèle.
+
 ## Variables d'environnement
 
-Fichier `backend/.env` :
+### Frontend (`frontend/.env` ou Vercel)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_SUPABASE_URL` | URL du projet Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Clé anon ou publishable Supabase |
+
+### Backend (`backend/.env`)
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|

@@ -4,6 +4,7 @@ import {
   addTasks,
   createProject as createProjectInDb,
   fetchProjects,
+  updateProjectName as updateProjectNameInDb,
 } from "../services/projectService";
 import type { GanttTask } from "../types/gantt";
 import type { Project } from "../types/app";
@@ -101,6 +102,38 @@ export function useProjects() {
     }
   }, []);
 
+  const renameProject = useCallback(async (projectId: string, name: string): Promise<Project> => {
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updated = await updateProjectNameInDb(projectId, name);
+      let renamedProject: Project | null = null;
+
+      setProjects((current) =>
+        current.map((project) => {
+          if (project.id === projectId) {
+            renamedProject = { ...project, name: updated.name };
+            return renamedProject;
+          }
+          return project;
+        }),
+      );
+
+      if (!renamedProject) {
+        throw new Error("Projet introuvable.");
+      }
+
+      return renamedProject;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Impossible de renommer le projet.";
+      setError(message);
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
   const getProjectById = useCallback(
     (projectId: string) => projects.find((project) => project.id === projectId),
     [projects],
@@ -112,6 +145,7 @@ export function useProjects() {
     saving,
     error,
     createProject,
+    renameProject,
     addTaskToProject,
     appendTasksToProject,
     getProjectById,

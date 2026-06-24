@@ -20,6 +20,7 @@ export function AppWithProjects() {
     saving,
     error: projectsError,
     createProject,
+    renameProject,
     addTaskToProject,
     appendTasksToProject,
     getProjectById,
@@ -92,6 +93,19 @@ export function AppWithProjects() {
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible d'ajouter la tâche.");
+    }
+  };
+
+  const handleRenameProject = async (name: string) => {
+    if (!activeProjectId) {
+      return;
+    }
+
+    try {
+      await renameProject(activeProjectId, name);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de renommer le projet.");
     }
   };
 
@@ -196,6 +210,8 @@ export function AppWithProjects() {
           <GanttPanel
             panelRef={ganttPanelRef}
             projectName={activeProject.name}
+            onRenameProject={handleRenameProject}
+            saving={saving}
             tasks={projectTasks}
             warnings={[]}
             viewMode={viewMode}

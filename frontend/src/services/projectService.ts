@@ -84,6 +84,27 @@ export async function createProject(name: string): Promise<Project> {
   if (error || !data) {
     throw toServiceError("Impossible de créer le projet.", error);
   }
+
+  return {
+    id: data.id,
+    name: data.name,
+    tasks: [],
+  };
+}
+
+export async function updateProjectName(projectId: string, name: string): Promise<Project> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("projects")
+    .update({ name: name.trim() })
+    .eq("id", projectId)
+    .select("id, name")
+    .single();
+
+  if (error || !data) {
+    throw toServiceError("Impossible de renommer le projet.", error);
+  }
+
   return {
     id: data.id,
     name: data.name,

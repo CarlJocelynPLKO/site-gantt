@@ -4,11 +4,10 @@ import type { ViewMode } from "frappe-gantt";
 import type { GanttTask } from "../types/gantt";
 import "../../node_modules/frappe-gantt/dist/frappe-gantt.css";
 
-// 1. L'interface (les ingrédients fournis par le parent)
 interface GanttChartProps {
   tasks: GanttTask[];
   viewMode: ViewMode;
-  // J'ai retiré chartRef d'ici, ce n'est pas un ingrédient externe !
+  isFullscreen?: boolean;
 }
 
 function formatDate(value: string): string {
@@ -22,9 +21,7 @@ function durationDays(start: string, end: string): number {
   return Math.max(1, Math.round(diff / (1000 * 60 * 60 * 24)));
 }
 
-// 2. Le composant principal
-export function GanttChart({ tasks, viewMode }: GanttChartProps) {
-  // 3. C'est ICI qu'on crée nos références internes !
+export function GanttChart({ tasks, viewMode, isFullscreen = false }: GanttChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const ganttInstance = useRef<Gantt | null>(null);
 
@@ -58,14 +55,14 @@ export function GanttChart({ tasks, viewMode }: GanttChartProps) {
       }
       ganttInstance.current = null;
     };
-  }, [tasks]); // J'ai aussi enlevé chartRef des dépendances ici, car un useRef ne change jamais
+  }, [tasks]);
 
   useEffect(() => {
     ganttInstance.current?.change_view_mode(viewMode);
   }, [viewMode]);
 
   return (
-    <div className="gantt-scroll">
+    <div className={`gantt-scroll ${isFullscreen ? "gantt-scroll--fullscreen" : ""}`}>
       <div ref={chartRef} className="gantt-container" />
     </div>
   );

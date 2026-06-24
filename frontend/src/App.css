@@ -226,12 +226,78 @@
 }
 
 .gantt-scroll {
-  overflow-x: auto;
+  overflow: auto;
   padding-bottom: 0.5rem;
+  max-height: 480px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.gantt-scroll--fullscreen {
+  flex: 1;
+  max-height: none;
+  min-height: 0;
 }
 
 .gantt-container {
   min-width: 720px;
+}
+
+.gantt-panel--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  margin: 0;
+  max-width: none;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0;
+  border: none;
+}
+
+body.gantt-fullscreen-active {
+  overflow: hidden;
+}
+
+.project-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.project-title-row .gantt-title {
+  margin: 0;
+}
+
+.project-title-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.project-title-form input {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  background: #ffffff;
+  font: inherit;
+}
+
+.project-title-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-sm {
+  padding: 0.45rem 0.8rem;
+  font-size: 0.875rem;
 }
 
 .gantt-popup {
@@ -382,6 +448,10 @@
   margin: 1rem 0;
   padding-left: 1.25rem;
   color: #334155;
+}
+
+.config-steps a {
+  color: #0f766e;
 }
 
 .config-steps li {
