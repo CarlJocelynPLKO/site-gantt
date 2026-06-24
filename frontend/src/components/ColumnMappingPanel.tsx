@@ -6,6 +6,9 @@ interface ColumnMappingPanelProps {
   mappingMode: string;
   loading: boolean;
   onGenerate: (selection: ColumnSelection) => void;
+  newProjectName?: string;
+  onNewProjectNameChange?: (name: string) => void;
+  showNewProjectName?: boolean;
 }
 
 export function ColumnMappingPanel({
@@ -13,6 +16,9 @@ export function ColumnMappingPanel({
   mappingMode,
   loading,
   onGenerate,
+  newProjectName = "",
+  onNewProjectNameChange,
+  showNewProjectName = false,
 }: ColumnMappingPanelProps) {
   const [taskColumn, setTaskColumn] = useState("");
   const [startColumn, setStartColumn] = useState("");
@@ -31,7 +37,8 @@ export function ColumnMappingPanel({
   const canGenerate =
     taskColumn &&
     startColumn &&
-    ((useDuration && durationColumn) || (!useDuration && endColumn));
+    ((useDuration && durationColumn) || (!useDuration && endColumn)) &&
+    (!showNewProjectName || newProjectName.trim().length > 0);
 
   return (
     <section className="mapping-panel">
@@ -41,6 +48,18 @@ export function ColumnMappingPanel({
           Mode {mappingMode.toLowerCase()} — confiance {Math.round(mapping.confidence * 100)}%
         </p>
       </div>
+
+      {showNewProjectName && onNewProjectNameChange && (
+        <label className="import-project-name-field">
+          Nom du nouveau projet
+          <input
+            type="text"
+            value={newProjectName}
+            onChange={(event) => onNewProjectNameChange(event.target.value)}
+            placeholder="Ex. Planning chantier"
+          />
+        </label>
+      )}
 
       <div className="mapping-grid">
         <label>
@@ -134,7 +153,7 @@ export function ColumnMappingPanel({
           })
         }
       >
-        {loading ? "Génération…" : "Générer le Gantt"}
+        {loading ? "Génération…" : showNewProjectName ? "Créer le projet" : "Générer le Gantt"}
       </button>
     </section>
   );

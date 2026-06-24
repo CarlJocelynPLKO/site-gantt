@@ -7,11 +7,13 @@ import { FileUpload } from "./components/FileUpload";
 import { GanttPanel } from "./components/GanttPanel";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import { ManualTaskForm } from "./components/ManualTaskForm";
+import { TaskList } from "./components/TaskList";
 import { analyzeFile, generateGantt } from "./hooks/useGanttApi";
 import { useProjects } from "./hooks/useProjects";
 import type { AppStep } from "./types/app";
-import type { AnalyzeResponse, ColumnSelection, GanttTask } from "./types/gantt";
+import type { AnalyzeResponse, ColumnSelection } from "./types/gantt";
 import { exportChartAsPng, exportChartAsSvg } from "./utils/exportChart";
+import { fileNameToProjectName } from "./utils/fileNameToProjectName";
 
 export function AppWithProjects() {
   const {
@@ -21,19 +23,21 @@ export function AppWithProjects() {
     error: projectsError,
     createProject,
     renameProject,
+    deleteProject,
     addTaskToProject,
     appendTasksToProject,
+    deleteTaskFromProject,
     getProjectById,
   } = useProjects();
 
   const [step, setStep] = useState<AppStep>("dashboard");
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [importTargetProjectId, setImportTargetProjectId] = useState<string | null>(null);
+  const [importAsNewProject, setImportAsNewProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
-  const [importedTasks, setImportedTasks] = useState<GanttTask[]>([]);
-  const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("Week");
@@ -42,15 +46,14 @@ export function AppWithProjects() {
 
   const activeProject = activeProjectId ? getProjectById(activeProjectId) : undefined;
   const projectTasks = activeProject?.tasks ?? [];
-  const ganttTasks = step === "gantt" ? importedTasks : projectTasks;
   const displayError = error ?? projectsError;
 
   const resetImportState = () => {
     setSelectedFile(null);
     setAnalysis(null);
-    setImportedTasks([]);
-    setWarnings([]);
     setImportTargetProjectId(null);
+    setImportAsNewProject(false);
+    setNewProjectName("");
   };
 
   const goToDashboard = () => {
@@ -76,6 +79,31 @@ export function AppWithProjects() {
     setStep("project");
     setError(null);
     resetImportState();
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    try {
+      await deleteProject(projectId);
+      if (activeProjectId === projectId) {
+        goToDashboard();
+      }
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de supprimer le projet.");
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!activeProjectId) {
+      return;
+    }
+
+    try {
+      await deleteTaskFromProject(activeProjectId, taskId);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de supprimer la tâche.");
+    }
   };
 
   const handleAddManualTask = async (taskInput: { name: string; start: string; end: string }) => {
@@ -111,6 +139,8 @@ export function AppWithProjects() {
 
   const startImport = (targetProjectId: string | null) => {
     setImportTargetProjectId(targetProjectId);
+    setImportAsNewProject(targetProjectId === null);
+    setNewProjectName("");
     setStep("upload");
     setError(null);
   };
@@ -118,6 +148,11 @@ export function AppWithProjects() {
   const handleFileSelected = async (file: File) => {
     setSelectedFile(file);
     setError(null);
+
+    if (importAsNewProject) {
+      setNewProjectName(fileNameToProjectName(file.name));
+    }
+
     setStep("analyzing");
 
     try {
@@ -126,7 +161,11 @@ export function AppWithProjects() {
       setStep("mapping");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible d'analyser le fichier.");
-      setStep(importTargetProjectId ? "project" : "upload");
+      if (importTargetProjectId) {
+        setStep("project");
+      } else {
+        setStep("upload");
+      }
     }
   };
 
@@ -146,10 +185,14 @@ export function AppWithProjects() {
         setActiveProjectId(importTargetProjectId);
         setStep("project");
         resetImportState();
-      } else {
-        setImportedTasks(result.tasks);
-        setWarnings(result.warnings);
-        setStep("gantt");
+      } else if (importAsNewProject) {
+        const projectName =
+          newProjectName.trim() || fileNameToProjectName(selectedFile.name);
+        const project = await createProject(projectName);
+        await appendTasksToProject(project.id, result.tasks);
+        setActiveProjectId(project.id);
+        setStep("project");
+        resetImportState();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de générer le diagramme.");
@@ -198,6 +241,7 @@ export function AppWithProjects() {
           saving={saving}
           onCreateProject={handleCreateProject}
           onOpenProject={handleOpenProject}
+          onDeleteProject={handleDeleteProject}
           onImport={() => startImport(null)}
         />
       )}
@@ -207,6 +251,7 @@ export function AppWithProjects() {
       {step === "project" && activeProject && (
         <>
           <ManualTaskForm onAddTask={handleAddManualTask} saving={saving} />
+          <TaskList tasks={projectTasks} onDeleteTask={handleDeleteTask} />
           <GanttPanel
             panelRef={ganttPanelRef}
             projectName={activeProject.name}
@@ -232,19 +277,9 @@ export function AppWithProjects() {
           mappingMode={analysis.mapping_mode}
           loading={generating}
           onGenerate={handleGenerate}
-        />
-      )}
-
-      {step === "gantt" && (
-        <GanttPanel
-          panelRef={ganttPanelRef}
-          tasks={ganttTasks}
-          warnings={warnings}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          onExportPng={handleExportPng}
-          onExportSvg={handleExportSvg}
-          onImport={() => startImport(null)}
+          showNewProjectName={importAsNewProject}
+          newProjectName={newProjectName}
+          onNewProjectNameChange={setNewProjectName}
         />
       )}
     </main>

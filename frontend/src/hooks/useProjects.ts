@@ -3,6 +3,8 @@ import {
   addTask,
   addTasks,
   createProject as createProjectInDb,
+  deleteProject as deleteProjectInDb,
+  deleteTask as deleteTaskInDb,
   fetchProjects,
   updateProjectName as updateProjectNameInDb,
 } from "../services/projectService";
@@ -134,6 +136,47 @@ export function useProjects() {
     }
   }, []);
 
+  const deleteProject = useCallback(async (projectId: string): Promise<void> => {
+    setSaving(true);
+    setError(null);
+
+    try {
+      await deleteProjectInDb(projectId);
+      setProjects((current) => current.filter((project) => project.id !== projectId));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Impossible de supprimer le projet.";
+      setError(message);
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  const deleteTaskFromProject = useCallback(
+    async (projectId: string, taskId: string): Promise<void> => {
+      setSaving(true);
+      setError(null);
+
+      try {
+        await deleteTaskInDb(taskId);
+        setProjects((current) =>
+          current.map((project) =>
+            project.id === projectId
+              ? { ...project, tasks: project.tasks.filter((task) => task.id !== taskId) }
+              : project,
+          ),
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Impossible de supprimer la tâche.";
+        setError(message);
+        throw err;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [],
+  );
+
   const getProjectById = useCallback(
     (projectId: string) => projects.find((project) => project.id === projectId),
     [projects],
@@ -146,8 +189,10 @@ export function useProjects() {
     error,
     createProject,
     renameProject,
+    deleteProject,
     addTaskToProject,
     appendTasksToProject,
+    deleteTaskFromProject,
     getProjectById,
     reload,
   };

@@ -1,8 +1,9 @@
 import axios from "axios";
 import type { AnalyzeResponse, ColumnSelection, GenerateResponse } from "../types/gantt";
+import { getApiBaseUrl } from "../utils/apiBaseUrl";
 
 const api = axios.create({
-  baseURL: "",
+  baseURL: getApiBaseUrl(),
 });
 
 function getErrorMessage(error: unknown): string {

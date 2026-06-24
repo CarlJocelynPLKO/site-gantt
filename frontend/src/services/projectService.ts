@@ -161,3 +161,21 @@ export async function addTasks(projectId: string, tasks: GanttTask[]): Promise<G
   }
   return (data as DbTask[]).map(mapTask);
 }
+
+export async function deleteProject(projectId: string): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("projects").delete().eq("id", projectId);
+
+  if (error) {
+    throw toServiceError("Impossible de supprimer le projet.", error);
+  }
+}
+
+export async function deleteTask(taskId: string): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+
+  if (error) {
+    throw toServiceError("Impossible de supprimer la tâche.", error);
+  }
+}
