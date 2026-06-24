@@ -3,6 +3,13 @@ import type { Calendar } from "../types/app";
 import type { Project } from "../types/gantt";
 import type { PostgrestError } from "@supabase/supabase-js";
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidUuid(value: string): boolean {
+  return UUID_REGEX.test(value);
+}
+
 interface DbCalendarRow {
   id: string;
   name: string;
@@ -192,7 +199,7 @@ export async function addProject(
   const { data, error } = await supabase
     .from("tasks")
     .insert({
-      ...(project.id ? { id: project.id } : {}),
+      ...(project.id && isValidUuid(project.id) ? { id: project.id } : {}),
       project_id: calendarId,
       name: project.name,
       start_date: project.start,
@@ -273,14 +280,28 @@ export async function addProjects(
     return [];
   }
 
-  const rows = projects.map((project) => ({
-    id: project.id,
-    project_id: calendarId,
-    name: project.name,
-    start_date: project.start,
-    end_date: project.end,
-    progress: project.progress,
-  }));
+  const rows = projects.map((project) => {
+    const row: {
+      id?: string;
+      project_id: string;
+      name: string;
+      start_date: string;
+      end_date: string;
+      progress: number;
+    } = {
+      project_id: calendarId,
+      name: project.name,
+      start_date: project.start,
+      end_date: project.end,
+      progress: project.progress,
+    };
+
+    if (project.id && isValidUuid(project.id)) {
+      row.id = project.id;
+    }
+
+    return row;
+  });
 
   const supabase = getSupabase();
   const { data, error } = await supabase
@@ -377,6 +398,39 @@ export async function updateProjectDescription(
 
   if (fetchError || !fullProject) {
     return mapProject(data as DbProjectRow);
+  }
+
+  return mapProject(fullProject as DbProjectRow);
+}
+
+export async function saveProjectDetails(
+  projectId: string,
+  details: { description: string; assigneeIds: string[] },
+): Promise<Project> {
+  const supabase = getSupabase();
+  const normalized = details.description.trim();
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ description: normalized || null })
+    .eq("id", projectId);
+
+  if (error) {
+    throw toServiceError("Impossible d'enregistrer les détails du projet.", error);
+  }
+
+  await replaceProjectAssignments(projectId, details.assigneeIds);
+
+  const { data: fullProject, error: fetchError } = await supabase
+    .from("tasks")
+    .select(
+      "id, project_id, name, start_date, end_date, progress, description, task_assignments(person_id, people(id, first_name, job_title))",
+    )
+    .eq("id", projectId)
+    .single();
+
+  if (fetchError || !fullProject) {
+    throw toServiceError("Impossible de charger le projet mis à jour.", fetchError);
   }
 
   return mapProject(fullProject as DbProjectRow);

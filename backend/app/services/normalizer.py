@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -64,7 +65,7 @@ def normalize_to_gantt(df: pd.DataFrame, mapping: GenerateRequest) -> tuple[list
 
         tasks.append(
             GanttTask(
-                id=str(len(tasks) + 1),
+                id=str(uuid.uuid4()),
                 name=task_name,
                 start=start_date.date().isoformat(),
                 end=end_date.date().isoformat(),

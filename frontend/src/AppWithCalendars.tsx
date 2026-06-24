@@ -31,7 +31,7 @@ export function AppWithCalendars() {
     renameCalendar,
     deleteCalendar,
     addProjectToCalendar,
-    updateProjectDescriptionInCalendar,
+    saveProjectDetailsInCalendar,
     updateProjectDatesInCalendar,
     appendProjectsToCalendar,
     deleteProjectFromCalendar,
@@ -164,15 +164,20 @@ export function AppWithCalendars() {
     }
   };
 
-  const handleSaveProjectDescription = async (projectId: string, description: string) => {
+  const handleSaveProjectDetails = async (
+    projectId: string,
+    details: { description: string; assigneeIds: string[] },
+  ) => {
     if (!activeCalendarId) {
       return;
     }
     try {
-      await updateProjectDescriptionInCalendar(activeCalendarId, projectId, description);
+      await saveProjectDetailsInCalendar(activeCalendarId, projectId, details);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible d'enregistrer la description.");
+      setError(
+        err instanceof Error ? err.message : "Impossible d'enregistrer les détails du projet.",
+      );
       throw err;
     }
   };
@@ -358,9 +363,10 @@ export function AppWithCalendars() {
           />
           <ProjectDetailsModal
             project={detailsProject}
+            people={calendarPeople}
             saving={saving}
             onClose={() => setDetailsProjectId(null)}
-            onSaveDescription={handleSaveProjectDescription}
+            onSave={handleSaveProjectDetails}
           />
         </>
       )}

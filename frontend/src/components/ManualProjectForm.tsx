@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import type { Project } from "../types/gantt";
 import type { Person } from "../types/team";
+import { AssigneesDropdown } from "./AssigneesDropdown";
+import { CollapsiblePanel } from "./CollapsiblePanel";
 
 interface ManualProjectFormProps {
   people: Person[];
@@ -50,14 +52,6 @@ export function ManualProjectForm({
     setError(null);
   }, [editingProject]);
 
-  const toggleAssignee = (personId: string) => {
-    setAssigneeIds((current) =>
-      current.includes(personId)
-        ? current.filter((id) => id !== personId)
-        : [...current, personId],
-    );
-  };
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -101,8 +95,11 @@ export function ManualProjectForm({
   };
 
   return (
-    <section className="mapping-panel task-form-panel">
-      <h2>{isEditing ? "Modifier le projet" : "Ajouter un projet"}</h2>
+    <CollapsiblePanel
+      title={isEditing ? "Modifier le projet" : "Ajouter un projet"}
+      className="task-form-panel"
+      defaultOpen
+    >
       <form className="task-form" onSubmit={handleSubmit}>
         <label>
           Nom du projet
@@ -124,27 +121,12 @@ export function ManualProjectForm({
           <input type="date" value={end} onChange={(event) => setEnd(event.target.value)} />
         </label>
 
-        {people.length > 0 && (
-          <fieldset className="assignees-fieldset">
-            <legend>Personnes affectées</legend>
-            <div className="assignees-list">
-              {people.map((person) => (
-                <label key={person.id} className="assignee-option">
-                  <input
-                    type="checkbox"
-                    checked={assigneeIds.includes(person.id)}
-                    onChange={() => toggleAssignee(person.id)}
-                  />
-                  {person.firstName} — {person.jobTitle}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        )}
-
-        {people.length === 0 && (
-          <p className="muted">Assignez une équipe au calendrier pour affecter des personnes.</p>
-        )}
+        <AssigneesDropdown
+          id="manual-project-assignees"
+          people={people}
+          value={assigneeIds}
+          onChange={setAssigneeIds}
+        />
 
         {error && <p className="form-error">{error}</p>}
 
@@ -163,6 +145,6 @@ export function ManualProjectForm({
           )}
         </div>
       </form>
-    </section>
+    </CollapsiblePanel>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, type MouseEvent } from "react";
 import type { Project } from "../types/gantt";
+import { CollapsiblePanel } from "./CollapsiblePanel";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 
 interface ProjectListProps {
@@ -17,10 +18,6 @@ function formatAssignees(project: Project): string {
 
 export function ProjectList({ projects, onDeleteProject, onShowProjectDetails }: ProjectListProps) {
   const [menu, setMenu] = useState<{ x: number; y: number; project: Project } | null>(null);
-
-  if (projects.length === 0) {
-    return null;
-  }
 
   const openMenu = (event: MouseEvent, project: Project) => {
     event.preventDefault();
@@ -45,29 +42,39 @@ export function ProjectList({ projects, onDeleteProject, onShowProjectDetails }:
       ]
     : [];
 
+  const badge = `${projects.length} projet${projects.length > 1 ? "s" : ""}`;
+
   return (
-    <section className="mapping-panel task-list-panel">
-      <h3>Projets du calendrier</h3>
-      <ul className="task-list">
-        {projects.map((project) => (
-          <li key={project.id}>
-            <button
-              type="button"
-              className="task-list-item"
-              onContextMenu={(event) => openMenu(event, project)}
-            >
-              <span className="task-list-name">{project.name}</span>
-              <span className="task-list-dates">
-                {project.start} → {project.end} · {formatAssignees(project)}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
+    <CollapsiblePanel
+      title="Projets du calendrier"
+      className="task-list-panel"
+      badge={badge}
+      defaultOpen={projects.length > 0}
+    >
+      {projects.length === 0 ? (
+        <p className="muted">Ce calendrier ne contient pas encore de projet.</p>
+      ) : (
+        <ul className="task-list">
+          {projects.map((project) => (
+            <li key={project.id}>
+              <button
+                type="button"
+                className="task-list-item"
+                onContextMenu={(event) => openMenu(event, project)}
+              >
+                <span className="task-list-name">{project.name}</span>
+                <span className="task-list-dates">
+                  {project.start} → {project.end} · {formatAssignees(project)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
       )}
-    </section>
+    </CollapsiblePanel>
   );
 }

@@ -1,30 +1,32 @@
 import { FormEvent, useEffect, useState } from "react";
 import type { Project } from "../types/gantt";
+import type { Person } from "../types/team";
+import { AssigneesDropdown } from "./AssigneesDropdown";
 
 interface ProjectDetailsModalProps {
   project: Project | null;
+  people: Person[];
   saving?: boolean;
   onClose: () => void;
-  onSaveDescription: (projectId: string, description: string) => Promise<void>;
-}
-
-function formatAssignees(project: Project): string {
-  if (!project.assignees?.length) {
-    return "Aucune affectation";
-  }
-  return project.assignees.map((person) => `${person.firstName} (${person.jobTitle})`).join(", ");
+  onSave: (
+    projectId: string,
+    details: { description: string; assigneeIds: string[] },
+  ) => Promise<void>;
 }
 
 export function ProjectDetailsModal({
   project,
+  people,
   saving = false,
   onClose,
-  onSaveDescription,
+  onSave,
 }: ProjectDetailsModalProps) {
   const [description, setDescription] = useState("");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
 
   useEffect(() => {
     setDescription(project?.description ?? "");
+    setAssigneeIds(project?.assignees?.map((person) => person.id) ?? []);
   }, [project]);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export function ProjectDetailsModal({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await onSaveDescription(project.id, description);
+    await onSave(project.id, { description, assigneeIds });
     onClose();
   };
 
@@ -81,13 +83,16 @@ export function ProjectDetailsModal({
             <dt>Fin</dt>
             <dd>{project.end}</dd>
           </div>
-          <div>
-            <dt>Personnes assignées</dt>
-            <dd>{formatAssignees(project)}</dd>
-          </div>
         </dl>
 
         <form className="task-details-form" onSubmit={(event) => void handleSubmit(event)}>
+          <AssigneesDropdown
+            id="project-details-assignees"
+            people={people}
+            value={assigneeIds}
+            onChange={setAssigneeIds}
+          />
+
           <label htmlFor="project-description">
             Description
             <textarea

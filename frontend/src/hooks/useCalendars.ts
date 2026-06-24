@@ -10,6 +10,7 @@ import {
   updateProject as updateProjectInDb,
   updateProjectDates as updateProjectDatesInDb,
   updateProjectDescription as updateProjectDescriptionInDb,
+  saveProjectDetails as saveProjectDetailsInDb,
 } from "../services/calendarService";
 import type { Calendar, ProjectInput } from "../types/app";
 import type { Project } from "../types/gantt";
@@ -262,6 +263,41 @@ export function useCalendars(enabled: boolean) {
     [],
   );
 
+  const saveProjectDetailsInCalendar = useCallback(
+    async (
+      calendarId: string,
+      projectId: string,
+      details: { description: string; assigneeIds: string[] },
+    ): Promise<Project> => {
+      setSaving(true);
+      setError(null);
+      try {
+        const project = await saveProjectDetailsInDb(projectId, details);
+        setCalendars((current) =>
+          current.map((calendar) =>
+            calendar.id === calendarId
+              ? {
+                  ...calendar,
+                  projects: calendar.projects.map((existing) =>
+                    existing.id === projectId ? project : existing,
+                  ),
+                }
+              : calendar,
+          ),
+        );
+        return project;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Impossible d'enregistrer les détails du projet.";
+        setError(message);
+        throw err;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [],
+  );
+
   const deleteProjectFromCalendar = useCallback(
     async (calendarId: string, projectId: string): Promise<void> => {
       setSaving(true);
@@ -306,6 +342,7 @@ export function useCalendars(enabled: boolean) {
     updateProjectInCalendar,
     updateProjectDatesInCalendar,
     updateProjectDescriptionInCalendar,
+    saveProjectDetailsInCalendar,
     appendProjectsToCalendar,
     deleteProjectFromCalendar,
     getCalendarById,

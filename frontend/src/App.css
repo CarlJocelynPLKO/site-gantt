@@ -384,10 +384,6 @@ body.gantt-fullscreen-active {
   margin-bottom: 1.5rem;
 }
 
-.task-list-panel h3 {
-  margin: 0 0 0.35rem;
-}
-
 .task-list-hint {
   margin: 0 0 0.75rem;
   font-size: 0.875rem;
@@ -564,6 +560,10 @@ body.gantt-fullscreen-active {
 
 .gantt-title {
   margin: 0 0 1rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
 }
 
 .gantt-empty {
@@ -737,6 +737,121 @@ body.gantt-fullscreen-active {
   font-weight: 500;
 }
 
+.collapsible-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.collapsible-panel-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.collapsible-panel-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.collapsible-panel-badge {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.collapsible-panel-chevron {
+  display: inline-block;
+  color: #64748b;
+  transition: transform 0.2s ease;
+}
+
+.collapsible-panel--collapsed .collapsible-panel-chevron {
+  transform: rotate(-90deg);
+}
+
+.collapsible-panel-body {
+  margin-top: 1rem;
+}
+
+.assignees-dropdown {
+  position: relative;
+  display: grid;
+  gap: 0.4rem;
+  grid-column: 1 / -1;
+}
+
+.assignees-dropdown label {
+  font-weight: 600;
+}
+
+.assignees-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.assignees-dropdown-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignees-dropdown-caret {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.assignees-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 220px;
+  overflow: auto;
+  padding: 0.35rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+}
+
+.assignees-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.assignees-dropdown-option:hover {
+  background: #f8fafc;
+}
+
 .gantt-filters {
   display: flex;
   flex-wrap: wrap;
@@ -857,6 +972,10 @@ body.gantt-fullscreen-active {
   font: inherit;
   resize: vertical;
   min-height: 120px;
+}
+
+.task-details-form .assignees-dropdown {
+  grid-column: auto;
 }
 
 .modal-actions {
