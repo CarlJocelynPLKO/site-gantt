@@ -1,16 +1,16 @@
-import type { GanttTask } from "./gantt";
+import type { Project } from "./gantt";
 import type { Person, TeamGroup } from "./team";
 
-export type AppStep = "dashboard" | "project" | "groups" | "upload" | "analyzing" | "mapping";
+export type AppStep = "dashboard" | "calendar" | "groups" | "upload" | "analyzing" | "mapping";
 
-export interface Project {
+export interface Calendar {
   id: string;
   name: string;
   groupId: string | null;
-  tasks: GanttTask[];
+  projects: Project[];
 }
 
-export interface ProjectTaskInput {
+export interface ProjectInput {
   name: string;
   start: string;
   end: string;

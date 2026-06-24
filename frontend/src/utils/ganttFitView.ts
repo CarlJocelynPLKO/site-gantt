@@ -1,17 +1,17 @@
 import type { ViewMode } from "frappe-gantt";
-import type { GanttTask } from "../types/gantt";
+import type { Project } from "../types/gantt";
 
-export function getTaskDateRange(tasks: GanttTask[]): { start: Date; end: Date } | null {
-  if (tasks.length === 0) {
+export function getProjectDateRange(projects: Project[]): { start: Date; end: Date } | null {
+  if (projects.length === 0) {
     return null;
   }
 
-  let min = new Date(tasks[0].start);
-  let max = new Date(tasks[0].end);
+  let min = new Date(projects[0].start);
+  let max = new Date(projects[0].end);
 
-  for (const task of tasks) {
-    const start = new Date(task.start);
-    const end = new Date(task.end);
+  for (const project of projects) {
+    const start = new Date(project.start);
+    const end = new Date(project.end);
     if (start < min) {
       min = start;
     }

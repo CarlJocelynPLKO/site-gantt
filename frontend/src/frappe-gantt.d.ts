@@ -20,6 +20,7 @@ declare module "frappe-gantt" {
         padding?: number;
         column_width?: number;
         custom_popup_html?: (task: GanttTask) => string;
+        on_date_change?: (task: GanttTask, start: Date, end: Date) => void;
       },
     );
     change_view_mode(mode: ViewMode): void;

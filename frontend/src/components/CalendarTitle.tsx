@@ -1,12 +1,12 @@
 import { FormEvent, useState } from "react";
 
-interface ProjectTitleProps {
+interface CalendarTitleProps {
   name: string;
   saving?: boolean;
   onRename: (name: string) => Promise<void>;
 }
 
-export function ProjectTitle({ name, saving = false, onRename }: ProjectTitleProps) {
+export function CalendarTitle({ name, saving = false, onRename }: CalendarTitleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [draftName, setDraftName] = useState(name);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export function ProjectTitle({ name, saving = false, onRename }: ProjectTitlePro
     setError(null);
 
     if (!draftName.trim()) {
-      setError("Le nom du projet ne peut pas être vide.");
+      setError("Le nom du calendrier ne peut pas être vide.");
       return;
     }
 

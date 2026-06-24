@@ -1,46 +1,46 @@
 import { FormEvent, useEffect, useState } from "react";
-import type { GanttTask } from "../types/gantt";
+import type { Project } from "../types/gantt";
 import type { Person } from "../types/team";
 
-interface ManualTaskFormProps {
+interface ManualProjectFormProps {
   people: Person[];
-  editingTask?: GanttTask | null;
-  onAddTask: (task: {
+  editingProject?: Project | null;
+  onAddProject: (project: {
     name: string;
     start: string;
     end: string;
     assigneeIds: string[];
   }) => Promise<void>;
-  onUpdateTask?: (
-    taskId: string,
-    task: { name: string; start: string; end: string; assigneeIds: string[] },
+  onUpdateProject?: (
+    projectId: string,
+    project: { name: string; start: string; end: string; assigneeIds: string[] },
   ) => Promise<void>;
   onCancelEdit?: () => void;
   saving?: boolean;
 }
 
-export function ManualTaskForm({
+export function ManualProjectForm({
   people,
-  editingTask = null,
-  onAddTask,
-  onUpdateTask,
+  editingProject = null,
+  onAddProject,
+  onUpdateProject,
   onCancelEdit,
   saving = false,
-}: ManualTaskFormProps) {
+}: ManualProjectFormProps) {
   const [name, setName] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const isEditing = Boolean(editingTask);
+  const isEditing = Boolean(editingProject);
 
   useEffect(() => {
-    if (editingTask) {
-      setName(editingTask.name);
-      setStart(editingTask.start);
-      setEnd(editingTask.end);
-      setAssigneeIds(editingTask.assignees?.map((person) => person.id) ?? []);
+    if (editingProject) {
+      setName(editingProject.name);
+      setStart(editingProject.start);
+      setEnd(editingProject.end);
+      setAssigneeIds(editingProject.assignees?.map((person) => person.id) ?? []);
     } else {
       setName("");
       setStart("");
@@ -48,7 +48,7 @@ export function ManualTaskForm({
       setAssigneeIds([]);
     }
     setError(null);
-  }, [editingTask]);
+  }, [editingProject]);
 
   const toggleAssignee = (personId: string) => {
     setAssigneeIds((current) =>
@@ -63,7 +63,7 @@ export function ManualTaskForm({
     setError(null);
 
     if (!name.trim()) {
-      setError("Le nom de la tâche est obligatoire.");
+      setError("Le nom du projet est obligatoire.");
       return;
     }
 
@@ -85,11 +85,11 @@ export function ManualTaskForm({
     };
 
     try {
-      if (isEditing && editingTask && onUpdateTask) {
-        await onUpdateTask(editingTask.id, payload);
+      if (isEditing && editingProject && onUpdateProject) {
+        await onUpdateProject(editingProject.id, payload);
         onCancelEdit?.();
       } else {
-        await onAddTask(payload);
+        await onAddProject(payload);
         setName("");
         setStart("");
         setEnd("");
@@ -102,10 +102,10 @@ export function ManualTaskForm({
 
   return (
     <section className="mapping-panel task-form-panel">
-      <h2>{isEditing ? "Modifier la tâche" : "Ajouter une tâche"}</h2>
+      <h2>{isEditing ? "Modifier le projet" : "Ajouter un projet"}</h2>
       <form className="task-form" onSubmit={handleSubmit}>
         <label>
-          Nom de la tâche
+          Nom du projet
           <input
             type="text"
             value={name}
@@ -143,7 +143,7 @@ export function ManualTaskForm({
         )}
 
         {people.length === 0 && (
-          <p className="muted">Assignez une équipe au projet pour affecter des personnes.</p>
+          <p className="muted">Assignez une équipe au calendrier pour affecter des personnes.</p>
         )}
 
         {error && <p className="form-error">{error}</p>}
@@ -154,7 +154,7 @@ export function ManualTaskForm({
               ? "Enregistrement…"
               : isEditing
                 ? "Enregistrer les modifications"
-                : "Ajouter la tâche"}
+                : "Ajouter le projet"}
           </button>
           {isEditing && onCancelEdit && (
             <button type="button" className="btn btn-ghost" onClick={onCancelEdit}>

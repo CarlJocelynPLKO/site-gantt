@@ -1,7 +1,7 @@
 import { isSupabaseConfigured } from "./supabaseClient";
 import { AppHeader } from "./components/AppHeader";
 import { ConfigError } from "./components/ConfigError";
-import { AppWithProjects } from "./AppWithProjects";
+import { AppWithCalendars } from "./AppWithCalendars";
 import "./App.css";
 
 function App() {
@@ -14,7 +14,7 @@ function App() {
     );
   }
 
-  return <AppWithProjects />;
+  return <AppWithCalendars />;
 }
 
 export default App;

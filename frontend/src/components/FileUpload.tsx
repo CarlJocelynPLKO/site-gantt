@@ -36,7 +36,7 @@ export function FileUpload({ onFileSelected, disabled = false }: FileUploadProps
 
   return (
     <section className="upload-section">
-      <h1>Visualisez votre projet en un clic</h1>
+      <h1>Visualisez votre calendrier en un clic</h1>
       <p className="subtitle">
         Importez un fichier Excel ou CSV. GanttAI détecte automatiquement vos colonnes.
       </p>

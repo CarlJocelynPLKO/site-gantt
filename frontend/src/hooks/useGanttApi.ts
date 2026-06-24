@@ -34,7 +34,7 @@ export async function generateGantt(file: File, mapping: ColumnSelection): Promi
   formData.append(
     "mapping_json",
     JSON.stringify({
-      task_column: mapping.taskColumn,
+      task_column: mapping.projectColumn,
       start_column: mapping.startColumn,
       end_column: mapping.useDuration ? null : mapping.endColumn,
       duration_column: mapping.useDuration ? mapping.durationColumn : null,
@@ -43,8 +43,15 @@ export async function generateGantt(file: File, mapping: ColumnSelection): Promi
   );
 
   try {
-    const response = await api.post<GenerateResponse>("/api/generate", formData);
-    return response.data;
+    const response = await api.post<{ tasks: GenerateResponse["projects"]; warnings: string[]; skipped_rows: number }>(
+      "/api/generate",
+      formData,
+    );
+    return {
+      projects: response.data.tasks,
+      warnings: response.data.warnings,
+      skipped_rows: response.data.skipped_rows,
+    };
   } catch (error) {
     throw new Error(getErrorMessage(error));
   }

@@ -7,7 +7,7 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- 1. Colonne user_id sur projects (propriétaire du projet)
+-- 1. Colonne user_id sur projects (propriétaire du calendrier)
 -- ---------------------------------------------------------------------------
 alter table public.projects
   add column if not exists group_id uuid,
@@ -54,7 +54,7 @@ create table if not exists public.people (
 create index if not exists people_group_id_idx on public.people(group_id);
 
 -- ---------------------------------------------------------------------------
--- 4. Table task_assignments (tâche ↔ personne, N-N)
+-- 4. Table task_assignments (projet ↔ personne, N-N)
 -- ---------------------------------------------------------------------------
 create table if not exists public.task_assignments (
   task_id uuid not null references public.tasks(id) on delete cascade,
@@ -236,7 +236,7 @@ create policy "tasks_delete_own_projects" on public.tasks
 
 -- ---------------------------------------------------------------------------
 -- 13. Politiques RLS — task_assignments
---     La personne doit appartenir au groupe du projet de la tâche
+--     La personne doit appartenir au groupe du calendrier du projet
 -- ---------------------------------------------------------------------------
 create policy "task_assignments_select_own" on public.task_assignments
   for select to authenticated
@@ -262,7 +262,7 @@ create policy "task_assignments_delete_own" on public.task_assignments
   using (public.is_task_owner(task_id));
 
 -- ---------------------------------------------------------------------------
--- 14. Trigger : renseigner user_id automatiquement à l'insertion d'un projet
+-- 14. Trigger : renseigner user_id automatiquement à l'insertion d'un calendrier
 -- ---------------------------------------------------------------------------
 create or replace function public.set_project_user_id()
 returns trigger

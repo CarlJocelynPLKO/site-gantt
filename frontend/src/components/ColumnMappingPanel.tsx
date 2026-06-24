@@ -7,12 +7,12 @@ interface ColumnMappingPanelProps {
   mappingMode: string;
   loading: boolean;
   onGenerate: (selection: ColumnSelection) => void;
-  newProjectName?: string;
-  onNewProjectNameChange?: (name: string) => void;
-  showNewProjectName?: boolean;
+  newCalendarName?: string;
+  onNewCalendarNameChange?: (name: string) => void;
+  showNewCalendarName?: boolean;
   groups?: TeamGroup[];
-  newProjectGroupId?: string;
-  onNewProjectGroupIdChange?: (groupId: string) => void;
+  newCalendarGroupId?: string;
+  onNewCalendarGroupIdChange?: (groupId: string) => void;
 }
 
 export function ColumnMappingPanel({
@@ -20,21 +20,21 @@ export function ColumnMappingPanel({
   mappingMode,
   loading,
   onGenerate,
-  newProjectName = "",
-  onNewProjectNameChange,
-  showNewProjectName = false,
+  newCalendarName = "",
+  onNewCalendarNameChange,
+  showNewCalendarName = false,
   groups = [],
-  newProjectGroupId = "",
-  onNewProjectGroupIdChange,
+  newCalendarGroupId = "",
+  onNewCalendarGroupIdChange,
 }: ColumnMappingPanelProps) {
-  const [taskColumn, setTaskColumn] = useState("");
+  const [projectColumn, setProjectColumn] = useState("");
   const [startColumn, setStartColumn] = useState("");
   const [endColumn, setEndColumn] = useState("");
   const [durationColumn, setDurationColumn] = useState("");
   const [useDuration, setUseDuration] = useState(false);
 
   useEffect(() => {
-    setTaskColumn(mapping.task_column ?? "");
+    setProjectColumn(mapping.task_column ?? "");
     setStartColumn(mapping.start_column ?? "");
     setEndColumn(mapping.end_column ?? "");
     setDurationColumn(mapping.duration_column ?? "");
@@ -42,10 +42,10 @@ export function ColumnMappingPanel({
   }, [mapping]);
 
   const canGenerate =
-    taskColumn &&
+    projectColumn &&
     startColumn &&
     ((useDuration && durationColumn) || (!useDuration && endColumn)) &&
-    (!showNewProjectName || newProjectName.trim().length > 0);
+    (!showNewCalendarName || newCalendarName.trim().length > 0);
 
   return (
     <section className="mapping-panel">
@@ -56,23 +56,23 @@ export function ColumnMappingPanel({
         </p>
       </div>
 
-      {showNewProjectName && onNewProjectNameChange && (
+      {showNewCalendarName && onNewCalendarNameChange && (
         <>
           <label className="import-project-name-field">
-            Nom du nouveau projet
+            Nom du nouveau calendrier
             <input
               type="text"
-              value={newProjectName}
-              onChange={(event) => onNewProjectNameChange(event.target.value)}
+              value={newCalendarName}
+              onChange={(event) => onNewCalendarNameChange(event.target.value)}
               placeholder="Ex. Planning chantier"
             />
           </label>
-          {onNewProjectGroupIdChange && (
+          {onNewCalendarGroupIdChange && (
             <label className="import-project-name-field">
               Équipe assignée (optionnel)
               <select
-                value={newProjectGroupId}
-                onChange={(event) => onNewProjectGroupIdChange(event.target.value)}
+                value={newCalendarGroupId}
+                onChange={(event) => onNewCalendarGroupIdChange(event.target.value)}
               >
                 <option value="">Aucune équipe</option>
                 {groups.map((group) => (
@@ -88,8 +88,8 @@ export function ColumnMappingPanel({
 
       <div className="mapping-grid">
         <label>
-          Tâche
-          <select value={taskColumn} onChange={(event) => setTaskColumn(event.target.value)}>
+          Projet
+          <select value={projectColumn} onChange={(event) => setProjectColumn(event.target.value)}>
             <option value="">Sélectionner…</option>
             {mapping.available_columns.map((column) => (
               <option key={column} value={column}>
@@ -170,7 +170,7 @@ export function ColumnMappingPanel({
         disabled={!canGenerate || loading}
         onClick={() =>
           onGenerate({
-            taskColumn,
+            projectColumn,
             startColumn,
             endColumn,
             durationColumn,
@@ -178,7 +178,7 @@ export function ColumnMappingPanel({
           })
         }
       >
-        {loading ? "Génération…" : showNewProjectName ? "Créer le projet" : "Générer le Gantt"}
+        {loading ? "Génération…" : showNewCalendarName ? "Créer le calendrier" : "Générer le Gantt"}
       </button>
     </section>
   );

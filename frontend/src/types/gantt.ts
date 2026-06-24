@@ -14,23 +14,24 @@ export interface AnalyzeResponse {
   mapping_mode: string;
 }
 
-export interface GanttTask {
+export interface Project {
   id: string;
   name: string;
   start: string;
   end: string;
   progress: number;
+  description?: string | null;
   assignees?: { id: string; firstName: string; jobTitle: string }[];
 }
 
 export interface GenerateResponse {
-  tasks: GanttTask[];
+  projects: Project[];
   warnings: string[];
   skipped_rows: number;
 }
 
 export interface ColumnSelection {
-  taskColumn: string;
+  projectColumn: string;
   startColumn: string;
   endColumn: string;
   durationColumn: string;

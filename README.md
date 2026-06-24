@@ -77,7 +77,7 @@ Le frontend reste inchangé : le mapping est pré-rempli via l'API.
 
 - `GET /health` — statut du serveur
 - `POST /api/analyze` — analyse d'un fichier (header + échantillon + mapping suggéré)
-- `POST /api/generate` — génération des tâches Gantt normalisées
+- `POST /api/generate` — génération des projets Gantt normalisés
 
 ## Formats supportés
 

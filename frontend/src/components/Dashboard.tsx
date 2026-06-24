@@ -1,46 +1,46 @@
 import { FormEvent, useState, type MouseEvent } from "react";
-import type { Project, TeamGroup } from "../types/app";
+import type { Calendar, TeamGroup } from "../types/app";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 
 interface DashboardProps {
-  projects: Project[];
+  calendars: Calendar[];
   groups: TeamGroup[];
   saving?: boolean;
-  onCreateProject: (name: string, groupId: string | null) => Promise<void>;
-  onOpenProject: (projectId: string) => void;
-  onDeleteProject: (projectId: string) => Promise<void>;
+  onCreateCalendar: (name: string, groupId: string | null) => Promise<void>;
+  onOpenCalendar: (calendarId: string) => void;
+  onDeleteCalendar: (calendarId: string) => Promise<void>;
   onImport: () => void;
   onManageGroups: () => void;
 }
 
 export function Dashboard({
-  projects,
+  calendars,
   groups,
   saving = false,
-  onCreateProject,
-  onOpenProject,
-  onDeleteProject,
+  onCreateCalendar,
+  onOpenCalendar,
+  onDeleteCalendar,
   onImport,
   onManageGroups,
 }: DashboardProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [projectName, setProjectName] = useState("");
+  const [calendarName, setCalendarName] = useState("");
   const [groupId, setGroupId] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; projectId: string } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; calendarId: string } | null>(null);
 
   const handleCreateSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError(null);
 
-    if (!projectName.trim()) {
-      setFormError("Veuillez saisir un nom de projet.");
+    if (!calendarName.trim()) {
+      setFormError("Veuillez saisir un nom de calendrier.");
       return;
     }
 
     try {
-      await onCreateProject(projectName.trim(), groupId || null);
-      setProjectName("");
+      await onCreateCalendar(calendarName.trim(), groupId || null);
+      setCalendarName("");
       setGroupId("");
       setShowCreateForm(false);
     } catch {
@@ -48,21 +48,21 @@ export function Dashboard({
     }
   };
 
-  const openProjectMenu = (event: MouseEvent, projectId: string) => {
+  const openCalendarMenu = (event: MouseEvent, calendarId: string) => {
     event.preventDefault();
-    setMenu({ x: event.clientX, y: event.clientY, projectId });
+    setMenu({ x: event.clientX, y: event.clientY, calendarId });
   };
 
   const menuItems: ContextMenuItem[] = menu
     ? [
         {
-          label: "Supprimer le projet",
+          label: "Supprimer le calendrier",
           danger: true,
           onClick: () => {
-            const project = projects.find((item) => item.id === menu.projectId);
-            const label = project?.name ?? "ce projet";
-            if (window.confirm(`Supprimer le projet « ${label} » et toutes ses tâches ?`)) {
-              void onDeleteProject(menu.projectId);
+            const calendar = calendars.find((item) => item.id === menu.calendarId);
+            const label = calendar?.name ?? "ce calendrier";
+            if (window.confirm(`Supprimer le calendrier « ${label} » et tous ses projets ?`)) {
+              void onDeleteCalendar(menu.calendarId);
             }
           },
         },
@@ -74,40 +74,37 @@ export function Dashboard({
   return (
     <section className="mapping-panel dashboard">
       <div className="dashboard-top-actions">
-        <h2>Mes projets</h2>
+        <h2>Mes calendriers</h2>
         <button type="button" className="btn btn-secondary" onClick={onManageGroups}>
           Gérer les équipes
         </button>
       </div>
 
-      {projects.length === 0 ? (
-        <p className="muted">Vous n&apos;avez pas encore créé de projet.</p>
+      {calendars.length === 0 ? (
+        <p className="muted">Vous n&apos;avez pas encore créé de calendrier.</p>
       ) : (
-        <>
-          <p className="muted task-list-hint">Clic droit sur un projet pour le supprimer.</p>
-          <ul className="project-list">
-            {projects.map((project) => (
-              <li key={project.id}>
-                <button
-                  type="button"
-                  className="btn btn-secondary project-open-btn"
-                  onClick={() => onOpenProject(project.id)}
-                  onContextMenu={(event) => openProjectMenu(event, project.id)}
-                >
-                  <span>
-                    {project.name}
-                    {project.groupId && (
-                      <span className="project-team-badge">{groupName(project.groupId)}</span>
-                    )}
-                  </span>
-                  <span className="project-meta">
-                    {project.tasks.length} tâche{project.tasks.length > 1 ? "s" : ""}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul className="project-list">
+          {calendars.map((calendar) => (
+            <li key={calendar.id}>
+              <button
+                type="button"
+                className="btn btn-secondary project-open-btn"
+                onClick={() => onOpenCalendar(calendar.id)}
+                onContextMenu={(event) => openCalendarMenu(event, calendar.id)}
+              >
+                <span>
+                  {calendar.name}
+                  {calendar.groupId && (
+                    <span className="project-team-badge">{groupName(calendar.groupId)}</span>
+                  )}
+                </span>
+                <span className="project-meta">
+                  {calendar.projects.length} projet{calendar.projects.length > 1 ? "s" : ""}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
       <hr className="dashboard-divider" />
@@ -115,11 +112,11 @@ export function Dashboard({
       {showCreateForm ? (
         <form className="create-project-form" onSubmit={handleCreateSubmit}>
           <label>
-            Nom du projet
+            Nom du calendrier
             <input
               type="text"
-              value={projectName}
-              onChange={(event) => setProjectName(event.target.value)}
+              value={calendarName}
+              onChange={(event) => setCalendarName(event.target.value)}
               placeholder="Ex. Rénovation bureau"
               autoFocus
             />
@@ -141,14 +138,14 @@ export function Dashboard({
 
           <div className="create-project-actions">
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Création…" : "Créer le projet"}
+              {saving ? "Création…" : "Créer le calendrier"}
             </button>
             <button
               type="button"
               className="btn btn-ghost"
               onClick={() => {
                 setShowCreateForm(false);
-                setProjectName("");
+                setCalendarName("");
                 setGroupId("");
                 setFormError(null);
               }}
@@ -163,7 +160,7 @@ export function Dashboard({
           className="btn btn-primary dashboard-action"
           onClick={() => setShowCreateForm(true)}
         >
-          Créer un nouveau projet
+          Créer un nouveau calendrier
         </button>
       )}
 

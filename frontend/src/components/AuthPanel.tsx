@@ -34,7 +34,7 @@ export function AuthPanel({ onSignIn, onSignUp }: AuthPanelProps) {
     <section className="mapping-panel auth-panel">
       <h2>Connexion requise</h2>
       <p className="muted">
-        Connectez-vous pour gérer vos projets, équipes et affectations (sécurité Supabase par
+        Connectez-vous pour gérer vos calendriers, équipes et affectations (sécurité Supabase par
         utilisateur).
       </p>
 
