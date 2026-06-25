@@ -39,6 +39,30 @@ export function suggestViewModeForRange(start: Date, end: Date): ViewMode {
   return "Month";
 }
 
+export function computeGanttBarLayout(
+  containerHeight: number,
+  taskCount: number,
+): { barHeight: number; padding: number } {
+  const defaults = { barHeight: 28, padding: 18 };
+
+  if (containerHeight <= 0 || taskCount <= 0) {
+    return defaults;
+  }
+
+  const gridHeaderHeight = 72;
+  const available = containerHeight - gridHeaderHeight;
+  const perRow = available / taskCount;
+
+  if (perRow <= defaults.barHeight + defaults.padding) {
+    return defaults;
+  }
+
+  const padding = Math.round(Math.min(36, Math.max(14, perRow * 0.22)));
+  const barHeight = Math.round(Math.min(80, Math.max(28, perRow - padding)));
+
+  return { barHeight, padding };
+}
+
 export function applyGanttFitToContainer(scrollElement: HTMLElement): number {
   const svg = scrollElement.querySelector("svg");
   if (!svg) {

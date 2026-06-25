@@ -10,10 +10,12 @@ import {
   updateProject as updateProjectInDb,
   updateProjectDates as updateProjectDatesInDb,
   updateProjectDescription as updateProjectDescriptionInDb,
+  updateProjectPhases as updateProjectPhasesInDb,
   saveProjectDetails as saveProjectDetailsInDb,
 } from "../services/calendarService";
 import type { Calendar, ProjectInput } from "../types/app";
 import type { Project } from "../types/gantt";
+import type { ProjectPhases } from "../utils/projectPhases";
 
 export function useCalendars(enabled: boolean) {
   const [calendars, setCalendars] = useState<Calendar[]>([]);
@@ -267,7 +269,12 @@ export function useCalendars(enabled: boolean) {
     async (
       calendarId: string,
       projectId: string,
-      details: { description: string; assigneeIds: string[] },
+      details: {
+        description: string;
+        assigneeIds: string[];
+        reviewFirstDate: string | null;
+        reviewFrequencyDays: number | null;
+      },
     ): Promise<Project> => {
       setSaving(true);
       setError(null);
@@ -294,6 +301,55 @@ export function useCalendars(enabled: boolean) {
       } finally {
         setSaving(false);
       }
+    },
+    [],
+  );
+
+  const updateProjectPhasesInCalendar = useCallback(
+    async (calendarId: string, projectId: string, phases: ProjectPhases): Promise<Project> => {
+      setSaving(true);
+      setError(null);
+      try {
+        const project = await updateProjectPhasesInDb(projectId, phases);
+        setCalendars((current) =>
+          current.map((calendar) =>
+            calendar.id === calendarId
+              ? {
+                  ...calendar,
+                  projects: calendar.projects.map((existing) =>
+                    existing.id === projectId ? project : existing,
+                  ),
+                }
+              : calendar,
+          ),
+        );
+        return project;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Impossible de mettre à jour les phases du projet.";
+        setError(message);
+        throw err;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [],
+  );
+
+  const replaceProjectInCalendar = useCallback(
+    (calendarId: string, project: Project) => {
+      setCalendars((current) =>
+        current.map((calendar) =>
+          calendar.id === calendarId
+            ? {
+                ...calendar,
+                projects: calendar.projects.map((existing) =>
+                  existing.id === project.id ? project : existing,
+                ),
+              }
+            : calendar,
+        ),
+      );
     },
     [],
   );
@@ -341,8 +397,10 @@ export function useCalendars(enabled: boolean) {
     addProjectToCalendar,
     updateProjectInCalendar,
     updateProjectDatesInCalendar,
+    updateProjectPhasesInCalendar,
     updateProjectDescriptionInCalendar,
     saveProjectDetailsInCalendar,
+    replaceProjectInCalendar,
     appendProjectsToCalendar,
     deleteProjectFromCalendar,
     getCalendarById,

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 interface CalendarTitleProps {
   name: string;
@@ -10,6 +10,12 @@ export function CalendarTitle({ name, saving = false, onRename }: CalendarTitleP
   const [isEditing, setIsEditing] = useState(false);
   const [draftName, setDraftName] = useState(name);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setDraftName(name);
+    }
+  }, [name, isEditing]);
 
   const startEditing = () => {
     setDraftName(name);
@@ -70,9 +76,13 @@ export function CalendarTitle({ name, saving = false, onRename }: CalendarTitleP
 
   return (
     <div className="project-title-row">
-      <h2 className="gantt-title">{name}</h2>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={startEditing}>
-        Renommer
+      <button
+        type="button"
+        className="gantt-title project-title-button"
+        onClick={startEditing}
+        title="Cliquer pour renommer"
+      >
+        {name}
       </button>
     </div>
   );

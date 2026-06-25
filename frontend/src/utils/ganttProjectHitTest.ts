@@ -5,7 +5,7 @@ export function resolveProjectFromGanttEvent(
   container: HTMLElement,
   projects: Project[],
 ): Project | null {
-  let element = target instanceof HTMLElement ? target : null;
+  let element = target instanceof Element ? target : null;
 
   while (element && element !== container) {
     const projectId = element.getAttribute("data-id");
@@ -15,7 +15,7 @@ export function resolveProjectFromGanttEvent(
     element = element.parentElement;
   }
 
-  const row = (target as HTMLElement | null)?.closest?.(".grid-row");
+  const row = (target as Element | null)?.closest?.(".grid-row");
   if (!row || !container.contains(row)) {
     return null;
   }

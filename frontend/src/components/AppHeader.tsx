@@ -3,11 +3,18 @@ interface AppHeaderProps {
   onBack: () => void;
   userEmail?: string | null;
   onSignOut?: () => void;
+  compact?: boolean;
 }
 
-export function AppHeader({ showBack, onBack, userEmail, onSignOut }: AppHeaderProps) {
+export function AppHeader({
+  showBack,
+  onBack,
+  userEmail,
+  onSignOut,
+  compact = false,
+}: AppHeaderProps) {
   return (
-    <header className="app-header">
+    <header className={`app-header${compact ? " app-header--compact" : ""}`}>
       <div>
         <p className="brand">GanttAI</p>
         <p className="brand-subtitle">Générateur automatique de diagrammes de Gantt</p>

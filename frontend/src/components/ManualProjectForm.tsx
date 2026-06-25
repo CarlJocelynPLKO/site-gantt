@@ -2,11 +2,11 @@ import { FormEvent, useEffect, useState } from "react";
 import type { Project } from "../types/gantt";
 import type { Person } from "../types/team";
 import { AssigneesDropdown } from "./AssigneesDropdown";
-import { CollapsiblePanel } from "./CollapsiblePanel";
 
 interface ManualProjectFormProps {
   people: Person[];
   editingProject?: Project | null;
+  onBack?: () => void;
   onAddProject: (project: {
     name: string;
     start: string;
@@ -24,6 +24,7 @@ interface ManualProjectFormProps {
 export function ManualProjectForm({
   people,
   editingProject = null,
+  onBack,
   onAddProject,
   onUpdateProject,
   onCancelEdit,
@@ -95,11 +96,17 @@ export function ManualProjectForm({
   };
 
   return (
-    <CollapsiblePanel
-      title={isEditing ? "Modifier le projet" : "Ajouter un projet"}
-      className="task-form-panel"
-      defaultOpen
-    >
+    <section className="add-project-page">
+      {!isEditing && onBack && (
+        <div className="task-dashboard-bar">
+          <button type="button" className="btn btn-secondary" onClick={onBack}>
+            ← Retour au calendrier
+          </button>
+        </div>
+      )}
+
+      <h2 className="gantt-title">{isEditing ? "Modifier le projet" : "Ajouter un projet"}</h2>
+
       <form className="task-form" onSubmit={handleSubmit}>
         <label>
           Nom du projet
@@ -145,6 +152,6 @@ export function ManualProjectForm({
           )}
         </div>
       </form>
-    </CollapsiblePanel>
+    </section>
   );
 }

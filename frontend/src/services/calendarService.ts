@@ -1,6 +1,8 @@
 import { getSupabase } from "../supabaseClient";
 import type { Calendar } from "../types/app";
 import type { Project } from "../types/gantt";
+import { mapDocumentsFromRow } from "../utils/projectDocuments";
+import { normalizePhases, type ProjectPhases } from "../utils/projectPhases";
 import type { PostgrestError } from "@supabase/supabase-js";
 
 const UUID_REGEX =
@@ -36,8 +38,24 @@ interface DbProjectRow {
   end_date: string;
   progress: number;
   description?: string | null;
+  review_first_date?: string | null;
+  review_frequency_days?: number | null;
+  cover_image_path?: string | null;
+  documents?: unknown;
+  phase_etude_pct?: number;
+  phase_chantier_pct?: number;
+  phase_livraison_pct?: number;
   task_assignments?: DbAssignment[];
 }
+
+const TASK_SELECT =
+  "id, project_id, name, start_date, end_date, progress, description, review_first_date, review_frequency_days, cover_image_path, documents, task_assignments(person_id, people(id, first_name, job_title))";
+
+const TASK_SELECT_WITH_PHASES =
+  "id, project_id, name, start_date, end_date, progress, description, review_first_date, review_frequency_days, cover_image_path, documents, phase_etude_pct, phase_chantier_pct, phase_livraison_pct, task_assignments(person_id, people(id, first_name, job_title))";
+
+const TASK_SELECT_BASIC =
+  "id, project_id, name, start_date, end_date, progress, description, review_first_date, review_frequency_days, cover_image_path, documents";
 
 function toServiceError(fallback: string, error: PostgrestError | null): Error {
   if (!error) {
@@ -77,6 +95,13 @@ function mapProject(row: DbProjectRow): Project {
     end: row.end_date,
     progress: row.progress,
     description: row.description ?? null,
+    reviewFirstDate: row.review_first_date ?? null,
+    reviewFrequencyDays: row.review_frequency_days ?? null,
+    coverImagePath: row.cover_image_path ?? null,
+    documents: mapDocumentsFromRow(row.documents),
+    phaseEtudePct: row.phase_etude_pct ?? 34,
+    phaseChantierPct: row.phase_chantier_pct ?? 33,
+    phaseLivraisonPct: row.phase_livraison_pct ?? 33,
     assignees: mapAssignees(row.task_assignments),
   };
 }
@@ -117,6 +142,22 @@ async function replaceProjectAssignments(projectId: string, personIds: string[])
   }
 }
 
+async function fetchProjectRows(): Promise<DbProjectRow[]> {
+  const supabase = getSupabase();
+
+  const withPhases = await supabase.from("tasks").select(TASK_SELECT_WITH_PHASES);
+  if (!withPhases.error && withPhases.data) {
+    return withPhases.data as DbProjectRow[];
+  }
+
+  const fallback = await supabase.from("tasks").select(TASK_SELECT);
+  if (fallback.error) {
+    throw toServiceError("Impossible de charger les projets.", fallback.error);
+  }
+
+  return (fallback.data ?? []) as DbProjectRow[];
+}
+
 export async function fetchCalendars(): Promise<Calendar[]> {
   const supabase = getSupabase();
 
@@ -129,17 +170,9 @@ export async function fetchCalendars(): Promise<Calendar[]> {
     throw toServiceError("Impossible de charger les calendriers.", calendarsError);
   }
 
-  const { data: projectRows, error: projectsError } = await supabase
-    .from("tasks")
-    .select(
-      "id, project_id, name, start_date, end_date, progress, description, task_assignments(person_id, people(id, first_name, job_title))",
-    );
+  const projectRows = await fetchProjectRows();
 
-  if (projectsError) {
-    throw toServiceError("Impossible de charger les projets.", projectsError);
-  }
-
-  const projectsByCalendar = groupProjectsByCalendar((projectRows ?? []) as DbProjectRow[]);
+  const projectsByCalendar = groupProjectsByCalendar(projectRows);
 
   return ((calendarRows ?? []) as DbCalendarRow[]).map((calendar) => ({
     id: calendar.id,
@@ -206,7 +239,7 @@ export async function addProject(
       end_date: project.end,
       progress: project.progress,
     })
-    .select("id, project_id, name, start_date, end_date, progress, description")
+    .select(TASK_SELECT_BASIC)
     .single();
 
   if (error || !data) {
@@ -219,9 +252,7 @@ export async function addProject(
 
   const { data: fullProject, error: fetchError } = await supabase
     .from("tasks")
-    .select(
-      "id, project_id, name, start_date, end_date, progress, description, task_assignments(person_id, people(id, first_name, job_title))",
-    )
+    .select(TASK_SELECT)
     .eq("id", data.id)
     .single();
 
@@ -247,7 +278,7 @@ export async function updateProject(
       progress: project.progress,
     })
     .eq("id", projectId)
-    .select("id, project_id, name, start_date, end_date, progress, description")
+    .select(TASK_SELECT_BASIC)
     .single();
 
   if (error || !data) {
@@ -258,9 +289,7 @@ export async function updateProject(
 
   const { data: fullProject, error: fetchError } = await supabase
     .from("tasks")
-    .select(
-      "id, project_id, name, start_date, end_date, progress, description, task_assignments(person_id, people(id, first_name, job_title))",
-    )
+    .select(TASK_SELECT)
     .eq("id", projectId)
     .single();
 
@@ -307,7 +336,7 @@ export async function addProjects(
   const { data, error } = await supabase
     .from("tasks")
     .insert(rows)
-    .select("id, project_id, name, start_date, end_date, progress, description");
+    .select(TASK_SELECT_BASIC);
 
   if (error || !data) {
     throw toServiceError("Impossible d'ajouter les projets.", error);
@@ -325,9 +354,7 @@ export async function addProjects(
   const ids = inserted.map((project) => project.id);
   const { data: fullProjects, error: fetchError } = await supabase
     .from("tasks")
-    .select(
-      "id, project_id, name, start_date, end_date, progress, description, task_assignments(person_id, people(id, first_name, job_title))",
-    )
+    .select(TASK_SELECT)
     .in("id", ids);
 
   if (fetchError || !fullProjects) {
@@ -348,7 +375,7 @@ export async function updateProjectDates(
     .from("tasks")
     .update({ start_date: start, end_date: end })
     .eq("id", projectId)
-    .select("id, project_id, name, start_date, end_date, progress, description")
+    .select(TASK_SELECT_BASIC)
     .single();
 
   if (error || !data) {
@@ -357,9 +384,7 @@ export async function updateProjectDates(
 
   const { data: fullProject, error: fetchError } = await supabase
     .from("tasks")
-    .select(
-      "id, project_id, name, start_date, end_date, progress, description, task_assignments(person_id, people(id, first_name, job_title))",
-    )
+    .select(TASK_SELECT)
     .eq("id", projectId)
     .single();
 
@@ -381,7 +406,7 @@ export async function updateProjectDescription(
     .from("tasks")
     .update({ description: normalized || null })
     .eq("id", projectId)
-    .select("id, project_id, name, start_date, end_date, progress, description")
+    .select(TASK_SELECT_BASIC)
     .single();
 
   if (error || !data) {
@@ -390,9 +415,7 @@ export async function updateProjectDescription(
 
   const { data: fullProject, error: fetchError } = await supabase
     .from("tasks")
-    .select(
-      "id, project_id, name, start_date, end_date, progress, description, task_assignments(person_id, people(id, first_name, job_title))",
-    )
+    .select(TASK_SELECT)
     .eq("id", projectId)
     .single();
 
@@ -405,14 +428,25 @@ export async function updateProjectDescription(
 
 export async function saveProjectDetails(
   projectId: string,
-  details: { description: string; assigneeIds: string[] },
+  details: {
+    description: string;
+    assigneeIds: string[];
+    reviewFirstDate: string | null;
+    reviewFrequencyDays: number | null;
+  },
 ): Promise<Project> {
   const supabase = getSupabase();
   const normalized = details.description.trim();
+  const reviewEnabled =
+    details.reviewFirstDate && details.reviewFrequencyDays && details.reviewFrequencyDays > 0;
 
   const { error } = await supabase
     .from("tasks")
-    .update({ description: normalized || null })
+    .update({
+      description: normalized || null,
+      review_first_date: reviewEnabled ? details.reviewFirstDate : null,
+      review_frequency_days: reviewEnabled ? details.reviewFrequencyDays : null,
+    })
     .eq("id", projectId);
 
   if (error) {
@@ -423,9 +457,7 @@ export async function saveProjectDetails(
 
   const { data: fullProject, error: fetchError } = await supabase
     .from("tasks")
-    .select(
-      "id, project_id, name, start_date, end_date, progress, description, task_assignments(person_id, people(id, first_name, job_title))",
-    )
+    .select(TASK_SELECT)
     .eq("id", projectId)
     .single();
 
@@ -434,6 +466,52 @@ export async function saveProjectDetails(
   }
 
   return mapProject(fullProject as DbProjectRow);
+}
+
+export async function updateProjectPhases(
+  projectId: string,
+  phases: ProjectPhases,
+): Promise<Project> {
+  const normalized = normalizePhases(phases);
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({
+      phase_etude_pct: normalized.etude,
+      phase_chantier_pct: normalized.chantier,
+      phase_livraison_pct: normalized.livraison,
+    })
+    .eq("id", projectId)
+    .select(TASK_SELECT_BASIC)
+    .single();
+
+  if (error || !data) {
+    throw toServiceError("Impossible de mettre à jour les phases du projet.", error);
+  }
+
+  const { data: fullProject, error: fetchError } = await supabase
+    .from("tasks")
+    .select(TASK_SELECT)
+    .eq("id", projectId)
+    .single();
+
+  if (fetchError || !fullProject) {
+    return mapProject(data as DbProjectRow);
+  }
+
+  return mapProject(fullProject as DbProjectRow);
+}
+
+export async function fetchProjectById(projectId: string): Promise<Project> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("tasks").select(TASK_SELECT).eq("id", projectId).single();
+
+  if (error || !data) {
+    throw toServiceError("Impossible de charger le projet.", error);
+  }
+
+  return mapProject(data as DbProjectRow);
 }
 
 export async function deleteCalendar(calendarId: string): Promise<void> {

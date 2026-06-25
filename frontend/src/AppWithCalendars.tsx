@@ -9,8 +9,7 @@ import { GanttPanel } from "./components/GanttPanel";
 import { GroupsManager } from "./components/GroupsManager";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import { ManualProjectForm } from "./components/ManualProjectForm";
-import { ProjectDetailsModal } from "./components/ProjectDetailsModal";
-import { ProjectList } from "./components/ProjectList";
+import { TaskDashboard } from "./components/TaskDashboard";
 import { useAuth } from "./hooks/useAuth";
 import { analyzeFile, generateGantt } from "./hooks/useGanttApi";
 import { useCalendars } from "./hooks/useCalendars";
@@ -32,7 +31,9 @@ export function AppWithCalendars() {
     deleteCalendar,
     addProjectToCalendar,
     saveProjectDetailsInCalendar,
+    replaceProjectInCalendar,
     updateProjectDatesInCalendar,
+    updateProjectPhasesInCalendar,
     appendProjectsToCalendar,
     deleteProjectFromCalendar,
     getCalendarById,
@@ -52,7 +53,8 @@ export function AppWithCalendars() {
 
   const [step, setStep] = useState<AppStep>("dashboard");
   const [activeCalendarId, setActiveCalendarId] = useState<string | null>(null);
-  const [detailsProjectId, setDetailsProjectId] = useState<string | null>(null);
+  const [calendarView, setCalendarView] = useState<"gantt" | "task" | "add">("gantt");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [importTargetCalendarId, setImportTargetCalendarId] = useState<string | null>(null);
   const [importAsNewCalendar, setImportAsNewCalendar] = useState(false);
   const [newCalendarName, setNewCalendarName] = useState("");
@@ -66,8 +68,8 @@ export function AppWithCalendars() {
 
   const activeCalendar = activeCalendarId ? getCalendarById(activeCalendarId) : undefined;
   const calendarProjects = activeCalendar?.projects ?? [];
-  const detailsProject = detailsProjectId
-    ? (calendarProjects.find((project) => project.id === detailsProjectId) ?? null)
+  const selectedProject = selectedProjectId
+    ? (calendarProjects.find((project) => project.id === selectedProjectId) ?? null)
     : null;
   const calendarPeople = activeCalendar?.groupId
     ? (getGroupById(activeCalendar.groupId)?.people ?? [])
@@ -90,7 +92,8 @@ export function AppWithCalendars() {
   const goToDashboard = () => {
     setStep("dashboard");
     setActiveCalendarId(null);
-    setDetailsProjectId(null);
+    setCalendarView("gantt");
+    setSelectedProjectId(null);
     resetImportState();
     setError(null);
   };
@@ -99,6 +102,8 @@ export function AppWithCalendars() {
     try {
       const calendar = await createCalendar(name, groupId);
       setActiveCalendarId(calendar.id);
+      setCalendarView("gantt");
+      setSelectedProjectId(null);
       setStep("calendar");
       setError(null);
     } catch (err) {
@@ -108,7 +113,8 @@ export function AppWithCalendars() {
 
   const handleOpenCalendar = (calendarId: string) => {
     setActiveCalendarId(calendarId);
-    setDetailsProjectId(null);
+    setCalendarView("gantt");
+    setSelectedProjectId(null);
     setStep("calendar");
     setError(null);
     resetImportState();
@@ -132,8 +138,9 @@ export function AppWithCalendars() {
     }
     try {
       await deleteProjectFromCalendar(activeCalendarId, projectId);
-      if (detailsProjectId === projectId) {
-        setDetailsProjectId(null);
+      if (selectedProjectId === projectId) {
+        setSelectedProjectId(null);
+        setCalendarView("gantt");
       }
       setError(null);
     } catch (err) {
@@ -161,12 +168,18 @@ export function AppWithCalendars() {
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible d'ajouter le projet.");
+      throw err;
     }
   };
 
   const handleSaveProjectDetails = async (
     projectId: string,
-    details: { description: string; assigneeIds: string[] },
+    details: {
+      description: string;
+      assigneeIds: string[];
+      reviewFirstDate: string | null;
+      reviewFrequencyDays: number | null;
+    },
   ) => {
     if (!activeCalendarId) {
       return;
@@ -192,6 +205,23 @@ export function AppWithCalendars() {
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Impossible de mettre à jour les dates du projet.",
+      );
+    }
+  };
+
+  const handleProjectPhasesChange = async (
+    projectId: string,
+    phases: { etude: number; chantier: number; livraison: number },
+  ) => {
+    if (!activeCalendarId) {
+      return;
+    }
+    try {
+      await updateProjectPhasesInCalendar(activeCalendarId, projectId, phases);
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Impossible de mettre à jour les phases du projet.",
       );
     }
   };
@@ -287,14 +317,17 @@ export function AppWithCalendars() {
   }
 
   const showBackButton = step !== "dashboard";
+  const isGanttFocusView =
+    step === "calendar" && calendarView === "gantt" && Boolean(activeCalendar);
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell${isGanttFocusView ? " app-shell--gantt-focus" : ""}`}>
       <AppHeader
         showBack={showBackButton}
         onBack={goToDashboard}
         userEmail={user?.email}
         onSignOut={() => void signOut().then(goToDashboard)}
+        compact={isGanttFocusView}
       />
 
       {displayError && <p className="error-banner">{displayError}</p>}
@@ -332,18 +365,46 @@ export function AppWithCalendars() {
 
       {step === "calendar" && activeCalendarId && !activeCalendar && <LoadingSkeleton />}
 
-      {step === "calendar" && activeCalendar && (
-        <>
-          <ManualProjectForm
+      {step === "calendar" && activeCalendar &&
+        (calendarView === "task" && selectedProject ? (
+          <TaskDashboard
+            project={selectedProject}
             people={calendarPeople}
-            onAddProject={handleAddManualProject}
             saving={saving}
+            onBack={() => {
+              setCalendarView("gantt");
+              setSelectedProjectId(null);
+            }}
+            onSave={handleSaveProjectDetails}
+            onProjectChange={(updated) => {
+              if (activeCalendarId) {
+                replaceProjectInCalendar(activeCalendarId, updated);
+              }
+            }}
+            onError={setError}
+            onDelete={handleDeleteProject}
           />
-          <ProjectList
-            projects={calendarProjects}
-            onDeleteProject={handleDeleteProject}
-            onShowProjectDetails={(project) => setDetailsProjectId(project.id)}
-          />
+        ) : calendarView === "add" ? (
+          <section className="add-project-page">
+            <div className="task-dashboard-bar">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setCalendarView("gantt")}
+              >
+                ← Retour au calendrier
+              </button>
+            </div>
+            <ManualProjectForm
+              people={calendarPeople}
+              saving={saving}
+              onAddProject={async (payload) => {
+                await handleAddManualProject(payload);
+                setCalendarView("gantt");
+              }}
+            />
+          </section>
+        ) : (
           <GanttPanel
             calendarName={activeCalendar.name}
             calendarGroupName={calendarGroupName}
@@ -355,21 +416,18 @@ export function AppWithCalendars() {
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             onExportError={setError}
-            showManualEntry={false}
+            showManualEntry
+            onAddProject={() => setCalendarView("add")}
             onImport={() => startImport(activeCalendar.id)}
             onDeleteProject={handleDeleteProject}
-            onShowProjectDetails={(project) => setDetailsProjectId(project.id)}
+            onProjectClick={(project) => {
+              setSelectedProjectId(project.id);
+              setCalendarView("task");
+            }}
             onProjectDatesChange={handleProjectDatesChange}
+            onProjectPhasesChange={handleProjectPhasesChange}
           />
-          <ProjectDetailsModal
-            project={detailsProject}
-            people={calendarPeople}
-            saving={saving}
-            onClose={() => setDetailsProjectId(null)}
-            onSave={handleSaveProjectDetails}
-          />
-        </>
-      )}
+        ))}
 
       {step === "upload" && <FileUpload onFileSelected={handleFileSelected} />}
       {step === "analyzing" && <LoadingSkeleton />}

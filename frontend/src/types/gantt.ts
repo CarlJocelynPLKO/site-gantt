@@ -14,13 +14,29 @@ export interface AnalyzeResponse {
   mapping_mode: string;
 }
 
+export interface ProjectDocument {
+  id: string;
+  name: string;
+  path: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+}
+
 export interface Project {
   id: string;
   name: string;
   start: string;
   end: string;
   progress: number;
+  phaseEtudePct?: number;
+  phaseChantierPct?: number;
+  phaseLivraisonPct?: number;
   description?: string | null;
+  reviewFirstDate?: string | null;
+  reviewFrequencyDays?: number | null;
+  coverImagePath?: string | null;
+  documents?: ProjectDocument[];
   assignees?: { id: string; firstName: string; jobTitle: string }[];
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { ViewMode } from "frappe-gantt";
 import type { Ref } from "react";
 import type { Project } from "../types/gantt";
@@ -11,11 +11,14 @@ import {
   filterProjects,
   type ProjectFilters,
 } from "../utils/projectFilters";
+import { countProjectsByStatus } from "../utils/projectStatus";
+import { PHASE_META, type ProjectPhases } from "../utils/projectPhases";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { CalendarTitle } from "./CalendarTitle";
 import { ExportMenu, type ExportFormat } from "./ExportMenu";
 import { GanttChart } from "./GanttChart";
 import { GanttFilters } from "./GanttFilters";
+import { ProjectsDrawer } from "./ProjectsDrawer";
 import { ZoomControls } from "./ZoomControls";
 interface GanttPanelProps {
   panelRef?: Ref<HTMLElement>;
@@ -29,10 +32,12 @@ interface GanttPanelProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onExportError?: (message: string) => void;
-  onAddProject?: () => void;  onImport: () => void;
+  onAddProject?: () => void;
+  onImport: () => void;
   onDeleteProject?: (projectId: string) => void;
-  onShowProjectDetails?: (project: Project) => void;
+  onProjectClick?: (project: Project) => void;
   onProjectDatesChange?: (projectId: string, start: string, end: string) => void;
+  onProjectPhasesChange?: (projectId: string, phases: ProjectPhases) => void;
   showManualEntry?: boolean;
 }
 
@@ -48,34 +53,24 @@ export function GanttPanel({
   viewMode,
   onViewModeChange,
   onExportError,
-  onAddProject,  onImport,
+  onAddProject,
+  onImport,
   onDeleteProject,
-  onShowProjectDetails,
+  onProjectClick,
   onProjectDatesChange,
+  onProjectPhasesChange,
   showManualEntry = true,
 }: GanttPanelProps) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [fitTrigger, setFitTrigger] = useState(0);
   const [columnWidth, setColumnWidth] = useState<number | undefined>(undefined);
   const [filters, setFilters] = useState<ProjectFilters>(EMPTY_PROJECT_FILTERS);
   const [menu, setMenu] = useState<{ x: number; y: number; project: Project } | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [projectsDrawerOpen, setProjectsDrawerOpen] = useState(false);
   const ganttExportRef = useRef<HTMLDivElement>(null);
   const jobTitles = useMemo(() => collectJobTitlesFromProjects(projects), [projects]);
   const filteredProjects = useMemo(() => filterProjects(projects, filters), [projects, filters]);
-
-  const exitFullscreen = useCallback(() => {
-    setIsFullscreen(false);
-    document.body.classList.remove("gantt-fullscreen-active");
-  }, []);
-
-  const toggleFullscreen = useCallback(() => {
-    setIsFullscreen((current) => {
-      const next = !current;
-      document.body.classList.toggle("gantt-fullscreen-active", next);
-      return next;
-    });
-  }, []);
+  const activeProjectCount = useMemo(() => countProjectsByStatus(projects).active, [projects]);
 
   const handleFitView = useCallback(() => {
     const range = getProjectDateRange(filteredProjects);
@@ -115,8 +110,8 @@ export function GanttPanel({
   const menuItems: ContextMenuItem[] = menu
     ? [
         {
-          label: "Détails",
-          onClick: () => onShowProjectDetails?.(menu.project),
+          label: "Ouvrir",
+          onClick: () => onProjectClick?.(menu.project),
         },
         {
           label: "Supprimer",
@@ -130,73 +125,98 @@ export function GanttPanel({
       ]
     : [];
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && isFullscreen) {
-        exitFullscreen();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.classList.remove("gantt-fullscreen-active");
-    };
-  }, [isFullscreen, exitFullscreen]);
-
   return (
-    <section
-      className={`gantt-panel ${isFullscreen ? "gantt-panel--fullscreen" : ""}`}
-      ref={panelRef}
-    >
-      {calendarName && onRenameCalendar ? (
-        <CalendarTitle name={calendarName} saving={saving} onRename={onRenameCalendar} />
-      ) : (
-        calendarName && <h2 className="gantt-title">{calendarName}</h2>
-      )}
+    <section className="gantt-panel" ref={panelRef}>
+      <div className="gantt-panel-header">
+        {calendarName && onRenameCalendar ? (
+          <CalendarTitle name={calendarName} saving={saving} onRename={onRenameCalendar} />
+        ) : (
+          calendarName && <h2 className="gantt-title">{calendarName}</h2>
+        )}
 
-      {calendarGroupName && <p className="project-team-label">Équipe : {calendarGroupName}</p>}
+        {calendarGroupName && <p className="project-team-label">Équipe : {calendarGroupName}</p>}
+      </div>
 
       {projects.length > 0 ? (
         <>
-          <div className="gantt-toolbar">
-            <ZoomControls viewMode={viewMode} onChange={onViewModeChange} />
-            <div className="export-actions">
-              <button type="button" className="btn btn-secondary" onClick={handleFitView}>
-                Ajuster la vue
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={toggleFullscreen}>
-                {isFullscreen ? "Quitter le plein écran" : "Plein écran"}
-              </button>
-              <ExportMenu
-                disabled={exporting || filteredProjects.length === 0}
-                onExport={(format) => void handleExport(format)}
-              />            </div>
+          <div className="gantt-panel-controls">
+            <div className="gantt-toolbar">
+              <ZoomControls viewMode={viewMode} onChange={onViewModeChange} />
+              <div className="export-actions">
+                {onAddProject && (
+                  <button
+                    type="button"
+                    className="btn btn-primary gantt-add-btn"
+                    onClick={onAddProject}
+                    title="Ajouter un projet"
+                    aria-label="Ajouter un projet"
+                  >
+                    +
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setProjectsDrawerOpen(true)}
+                >
+                  Liste des projets
+                  {activeProjectCount > 0 && (
+                    <span className="projects-drawer-trigger-count">{activeProjectCount}</span>
+                  )}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={handleFitView}>
+                  Ajuster la vue
+                </button>
+                <ExportMenu
+                  disabled={exporting || filteredProjects.length === 0}
+                  onExport={(format) => void handleExport(format)}
+                />
+              </div>
+            </div>
+
+            <GanttFilters
+              people={calendarPeople}
+              jobTitles={jobTitles}
+              filters={filters}
+              onChange={setFilters}
+              onReset={() => setFilters(EMPTY_PROJECT_FILTERS)}
+            />
+
+            <div className="gantt-phase-legend" aria-label="Légende des phases projet">
+              {(Object.keys(PHASE_META) as Array<keyof typeof PHASE_META>).map((key) => (
+                <span key={key} className="gantt-phase-legend-item">
+                  <span
+                    className="gantt-phase-legend-swatch"
+                    style={{ backgroundColor: PHASE_META[key].color }}
+                  />
+                  {PHASE_META[key].label}
+                </span>
+              ))}
+              <span className="gantt-phase-legend-hint muted">
+                Glissez les séparateurs sur une barre pour ajuster les phases
+              </span>
+            </div>
           </div>
 
-          <GanttFilters
-            people={calendarPeople}
-            jobTitles={jobTitles}
-            filters={filters}
-            onChange={setFilters}
-            onReset={() => setFilters(EMPTY_PROJECT_FILTERS)}
-          />
-
-          {filteredProjects.length === 0 ? (
-            <p className="muted gantt-filter-empty">
-              Aucun projet ne correspond aux filtres sélectionnés.
-            </p>
-          ) : (
-            <GanttChart
-              projects={filteredProjects}
-              viewMode={viewMode}
-              isFullscreen={isFullscreen}
-              fitTrigger={fitTrigger}
-              columnWidth={columnWidth}
-              exportRef={ganttExportRef}
-              onProjectContextMenu={handleProjectContextMenu}
-              onProjectDatesChange={onProjectDatesChange}
-            />          )}
+          <div className="gantt-panel-body">
+            {filteredProjects.length === 0 ? (
+              <p className="muted gantt-filter-empty">
+                Aucun projet ne correspond aux filtres sélectionnés.
+              </p>
+            ) : (
+              <GanttChart
+                projects={filteredProjects}
+                viewMode={viewMode}
+                fitTrigger={fitTrigger}
+                columnWidth={columnWidth}
+                exportRef={ganttExportRef}
+                onProjectClick={onProjectClick}
+                onProjectContextMenu={handleProjectContextMenu}
+                onProjectDatesChange={onProjectDatesChange}
+                onProjectPhasesChange={onProjectPhasesChange}
+              />
+            )}
+          </div>
 
           {warnings.length > 0 && (
             <ul className="warning-list">
@@ -225,6 +245,14 @@ export function GanttPanel({
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
       )}
+
+      <ProjectsDrawer
+        open={projectsDrawerOpen}
+        projects={projects}
+        onClose={() => setProjectsDrawerOpen(false)}
+        onProjectClick={(project) => onProjectClick?.(project)}
+        onDeleteProject={onDeleteProject}
+      />
     </section>
   );
 }
